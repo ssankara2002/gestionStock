@@ -1,0 +1,113 @@
+name: Build and Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main  # Déclenché sur push vers main
+      - dev   # Déclenché sur push vers dev
+  workflow_dispatch:  # Permet de déclencher manuellement
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout du code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Configuration de Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. Login à Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 4. Build et push de l'image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/ejomi-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/ejomi-api:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/ejomi-api:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/ejomi-api:buildcache,mode=max
+
+      # 5. Copie des fichiers de configuration
+      - name: Copy configuration files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 10m
+          source: ".env.production,docker-compose.yml,nginx-ejomi.conf"
+          target: "~/ejomi-api/"
+          strip_components: 0
+
+      # 6. Déploiement sur le VPS
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 10m
+          script: |
+            cd ~/ejomi-api
+
+            echo "📝 Copie de .env.production vers .env..."
+            cp .env.production .env
+
+            echo "🛑 Arrêt du container API..."
+            docker compose stop api
+
+            echo "🗑️  Suppression de l'ancien container..."
+            docker compose rm -f api
+
+            echo "🧹 Suppression de l'ancienne image..."
+            docker rmi ${{ secrets.DOCKER_USERNAME }}/ejomi-api:latest || true
+
+            echo "📥 Pull de la nouvelle image..."
+            docker pull ${{ secrets.DOCKER_USERNAME }}/ejomi-api:latest
+
+            echo "🚀 Démarrage du nouveau container..."
+            docker compose up -d api
+
+            echo "⏳ Attente du démarrage (20 secondes)..."
+            sleep 20
+
+            echo "📊 Vérification du statut..."
+            docker compose ps api
+
+            echo "📋 Logs récents..."
+            docker compose logs --tail=20 api
+
+            echo "✅ Déploiement terminé!"
+
+      # 7. Notification de succès
+      - name: Deployment success
+        if: success()
+        run: |
+          echo "✅ Déploiement réussi!"
+          echo "🌐 URL: https://ejomi.edutrackhub.cloud"
+          echo "📚 Swagger: https://ejomi.edutrackhub.cloud/api-docs"
+          echo "🔍 Health: https://ejomi.edutrackhub.cloud/health"
+
+      # 8. Notification d'échec
+      - name: Deployment failed
+        if: failure()
+        run: |
+          echo "❌ Le déploiement a échoué!"
+          echo "Consultez les logs ci-dessus pour plus de détails."

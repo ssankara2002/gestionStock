@@ -1,0 +1,127 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+
+    --popover: 39 33% 98%;
+    --popover-foreground: 0 0% 7%;
+
+    --primary: 46 65% 52%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 199 100% 43%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 39 10% 90%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 45 40% 63%;
+    --accent-foreground: 0 0% 7%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 39 10% 85%;
+    --input: 39 10% 85%;
+    --ring: 46 65% 52%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar variables */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 46 65% 52%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 39 10% 90%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 39 10% 85%;
+    --sidebar-ring: 46 65% 52%;
+  }
+
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 46 65% 52%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 199 100% 43%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 45 40% 63%;
+    --accent-foreground: 0 0% 7%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 46 65% 52%;
+
+    /* Sidebar variables */
+    --sidebar-background: 0 0% 15%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 46 65% 52%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 20%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 46 65% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-playfair text-primary;
+  }
+}
+
+@layer components {
+  .gold-gradient {
+    @apply bg-gradient-to-r from-[#D4AF37] to-[#F5D073];
+  }
+
+  .gold-border {
+    @apply border border-primary shadow-sm;
+  }
+
+  .card-product {
+    @apply bg-card border-primary border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-md hover:shadow-primary/20;
+  }
+
+  .btn-gold {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm;
+  }
+
+  .btn-blue {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
+  }
+}

@@ -1,0 +1,60 @@
+services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: ejomi-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-ejomi_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: ${DB_NAME:-gestion_ejomi}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ejomi-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ejomi_user} -d ${DB_NAME:-gestion_ejomi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Node.js
+  api:
+    image: ssarata/ejomi-api:latest
+    container_name: ejomi-api
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      API_URL: "${API_URL}"
+      DATABASE_URL: postgresql://${DB_USER:-ejomi_user}:${DB_PASSWORD:-changeme}@postgres:5432/${DB_NAME:-gestion_ejomi}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-default_jwt_secret_change_me}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      MONERO_RPC_URL: ${MONERO_RPC_URL}
+      MONERO_WALLET_RPC_URL: ${MONERO_WALLET_RPC_URL}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ejomi-network
+    volumes:
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  ejomi-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
