@@ -54,7 +54,7 @@ export function ListeAbsences({ employeId }: ListeAbsencesProps) {
     setShowEditDialog(false)
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string | number) => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cette absence ?")) return
 
     try {

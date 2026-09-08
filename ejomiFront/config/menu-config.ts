@@ -143,6 +143,12 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: ClipboardList,
     roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER"],
   },
+  {
+    href: "/magasinier/rapport-lots",
+    label: "Rapport des lots",
+    icon: BarChart3,
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "GERANT"],
+  },
 ]
 
 /**

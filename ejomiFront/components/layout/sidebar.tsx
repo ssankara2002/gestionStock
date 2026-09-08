@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   BarChart3,
@@ -21,6 +22,9 @@ import {
   Wallet,
   Shield,
   ArrowLeftRight,
+  Building2,
+  Layers,
+  PieChart,
 } from "lucide-react"
 
 import {
@@ -42,12 +46,14 @@ interface MenuItem {
   icon: React.ReactNode
   permissions?: Permission[]
   requireAll?: boolean
+  roles?: string[] // restreindre à certains rôles
 }
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { user, logout, loading } = useAuth()
+  const { user, entreprise, logout, loading } = useAuth()
   const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions()
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3002'
 
   const menuItems: MenuItem[] = [
     {
@@ -62,6 +68,12 @@ export function AppSidebar() {
       icon: <BarChart3 className="h-5 w-5" />,
       permissions: ["employe.read", "transaction.read"],
       requireAll: true,
+    },
+    {
+      href: "/gerant/bilan",
+      label: "Bilan financier",
+      icon: <PieChart className="h-5 w-5" />,
+      permissions: ["transaction.read"],
     },
     {
       href: "/vendeur/commandes",
@@ -149,6 +161,12 @@ export function AppSidebar() {
       permissions: ["transfert.create"],
     },
     {
+      href: "/magasinier/rapport-lots",
+      label: "Lots de stock",
+      icon: <Layers className="h-5 w-5" />,
+      permissions: ["produit.read"],
+    },
+    {
       href: "/magasinier/inventaire",
       label: "Inventaire",
       icon: <ClipboardList className="h-5 w-5" />,
@@ -166,10 +184,23 @@ export function AppSidebar() {
       icon: <Shield className="h-5 w-5" />,
       permissions: ["role.read"],
     },
+    {
+      href: "/super-admin/entreprises",
+      label: "Entreprises",
+      icon: <Building2 className="h-5 w-5" />,
+      roles: ["SUPER_ADMIN"],
+    },
   ]
 
-  // Filtrer les items en fonction des permissions
+  const userRole = user?.role?.name
+
+  // Filtrer les items en fonction des permissions et rôles
   const visibleMenuItems = menuItems.filter((item) => {
+    // Vérification par rôle strict (ex: SUPER_ADMIN uniquement)
+    if (item.roles && item.roles.length > 0) {
+      return userRole ? item.roles.includes(userRole) : false
+    }
+
     // Si pas de permissions requises, l'item est visible
     if (!item.permissions || item.permissions.length === 0) {
       return true
@@ -190,10 +221,24 @@ export function AppSidebar() {
     <Sidebar variant="floating" collapsible="icon">
       <SidebarHeader className="flex items-center justify-between p-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="font-playfair text-sm font-bold text-primary-foreground">GT</span>
+          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shrink-0">
+            {entreprise?.logo ? (
+              <Image
+                src={`${baseUrl}/uploads/${entreprise.logo}`}
+                alt={entreprise.nom}
+                width={32}
+                height={32}
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              <span className="font-playfair text-sm font-bold text-primary-foreground">
+                {entreprise?.nom?.charAt(0)?.toUpperCase() || "E"}
+              </span>
+            )}
           </div>
-          <span className="font-playfair text-xl font-bold text-primary">GoldTech</span>
+          <span className="font-playfair text-xl font-bold text-primary truncate">
+            {entreprise?.nom || "Dashboard"}
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent>

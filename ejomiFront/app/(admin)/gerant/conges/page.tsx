@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { FormulaireConge } from "@/components/employes/formulaire-conge"
 import { congeService, employesService as employeService } from "@/services"
-import type { Conge, CreateCongeDto, CongeStatut } from "@/types/conge"
+import type { Conge, CongeCreateData, CongeStatut } from "@/types/conge"
 import { useToast } from "@/hooks/use-toast"
 import type { Employe } from "@/types/employe"
 import { format } from "date-fns"
@@ -66,7 +66,7 @@ export default function CongesPage() {
     }
   }
 
-  const handleCongeSubmit = async (data: CreateCongeDto | CongeUpdateData) => {
+  const handleCongeSubmit = async (data: CongeCreateData | CongeUpdateData) => {
     try {
       if (editingConge) {
         await congeService.update(editingConge.id, data)
@@ -75,7 +75,7 @@ export default function CongesPage() {
           description: "La demande de congé a été modifiée avec succès.",
         })
       } else {
-        await congeService.create(data as CreateCongeDto)
+        await congeService.create(data as CongeCreateData)
         toast({
           title: "Succès",
           description: "La demande de congé a été créée avec succès.",
@@ -93,7 +93,7 @@ export default function CongesPage() {
     }
   }
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async (id: string | number) => {
     try {
       await congeService.approuver(id)
       await loadData()
@@ -111,7 +111,7 @@ export default function CongesPage() {
     }
   }
 
-  const handleReject = async (id: number) => {
+  const handleReject = async (id: string | number) => {
     try {
       await congeService.refuser(id)
       await loadData()
@@ -129,7 +129,7 @@ export default function CongesPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce congé ?")) {
       try {
         await congeService.delete(id.toString())
@@ -163,7 +163,7 @@ export default function CongesPage() {
       conge.employe?.user?.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       conge.employe?.user?.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       conge.type.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesEmploye = selectedEmploye === "all" || conge.employeId === Number.parseInt(selectedEmploye)
+    const matchesEmploye = selectedEmploye === "all" || String(conge.employeId) === selectedEmploye
     const matchesStatut = selectedStatut === "all" || conge.statut === selectedStatut
     return matchesSearch && matchesEmploye && matchesStatut
   })
@@ -179,7 +179,7 @@ export default function CongesPage() {
     hasPrev: currentPage > 1,
   } : null
 
-  const calculateDuration = (dateDebut: Date, dateFin: Date) => {
+  const calculateDuration = (dateDebut: string | Date, dateFin: string | Date) => {
     const debut = new Date(dateDebut)
     const fin = new Date(dateFin)
     const diffTime = Math.abs(fin.getTime() - debut.getTime())
@@ -232,7 +232,7 @@ export default function CongesPage() {
                 <DialogHeader>
                   <DialogTitle>{editingConge ? "Modifier la Demande" : "Nouvelle Demande de Congé"}</DialogTitle>
                 </DialogHeader>
-                <FormulaireConge employes={employes} conge={editingConge} onCongeSubmit={handleCongeSubmit} />
+                <FormulaireConge employes={employes} conge={editingConge ?? undefined} onCongeSubmit={handleCongeSubmit} />
               </DialogContent>
             </Dialog>
           </div>

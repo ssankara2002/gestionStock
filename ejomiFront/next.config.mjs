@@ -8,9 +8,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'ejomi.edutrackhub.cloud',
-        port: '',
-        pathname: '/uploads/**',
+        hostname: '**',
       },
       {
         protocol: 'http',

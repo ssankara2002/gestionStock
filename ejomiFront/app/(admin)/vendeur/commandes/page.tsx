@@ -38,7 +38,6 @@ export default function CommandesPage() {
       if (Array.isArray(payload?.data)) return payload.data
       return []
     },
-    staleTime: 0,
   })
 
   const allCommandes: Commande[] = commandesData || []

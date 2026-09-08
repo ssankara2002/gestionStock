@@ -54,14 +54,15 @@ const authenticateToken = async (req: AuthenticatedRequest, res: Response, next:
 
       console.log("User from DB:", { id: userFromDb.id, email: userFromDb.email, roleId: userFromDb.roleId, role: userFromDb.role });
 
-      // Attacher les informations utilisateur à la requête
+      // entrepriseId vient du JWT (choix de l'utilisateur à la connexion),
+      // pas de la BD (qui stocke l'entreprise principale uniquement).
       req.user = {
         userId: userFromDb.id,
         email: userFromDb.email || '',
         roleId: userFromDb.roleId || undefined,
         roleName: userFromDb.role?.name,
         role: userFromDb.role?.name,
-        entrepriseId: userFromDb.entrepriseId || undefined,
+        entrepriseId: (decoded.entrepriseId as number | undefined) ?? userFromDb.entrepriseId ?? undefined,
       };
       console.log("req.user défini:", req.user);
       next();

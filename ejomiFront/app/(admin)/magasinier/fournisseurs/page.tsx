@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Eye, PenLine, Plus, Search, Trash2, X } from "lucide-react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,40 +19,28 @@ import { DataPagination, type PaginationInfo } from "@/components/shared/data-pa
 export default function FournisseursPage() {
   const { toast } = useToast()
   const { hasPermission } = usePermissions()
+  const queryClient = useQueryClient()
   const itemsPerPage = 5
   const [searchTerm, setSearchTerm] = useState("")
-  const [allFournisseurs, setAllFournisseurs] = useState<Fournisseur[]>([])
-  const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
 
-  useEffect(() => {
-    const loadFournisseurs = async () => {
-      setLoading(true)
-      try {
-        const response = await fournisseurService.getAll()
-        const responseData = response.data
-        const list = Array.isArray(responseData) ? responseData : (responseData.data || [])
-        setAllFournisseurs(list)
-      } catch (error: any) {
-        toast({
-          title: "Erreur de chargement",
-          description: error.response?.data?.message || "Impossible de charger les fournisseurs",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['fournisseurs'],
+    queryFn: async () => {
+      const response = await fournisseurService.getAll()
+      const responseData = response.data
+      return Array.isArray(responseData) ? responseData : (responseData.data || [])
+    },
+  })
 
-    loadFournisseurs()
-  }, [toast])
+  const allFournisseurs: Fournisseur[] = data || []
 
   const filteredFournisseurs = allFournisseurs.filter(
     (fournisseur) =>
       fournisseur.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fournisseur.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (fournisseur.email && fournisseur.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      fournisseur.tel.includes(searchTerm),
+      (fournisseur.tel && fournisseur.tel.includes(searchTerm)),
   )
 
   const totalPages = Math.ceil(filteredFournisseurs.length / itemsPerPage)
@@ -73,7 +62,7 @@ export default function FournisseursPage() {
 
     try {
       await fournisseurService.delete(id)
-      setAllFournisseurs(allFournisseurs.filter((f) => f.id !== id))
+      queryClient.invalidateQueries({ queryKey: ['fournisseurs'] })
       toast({
         title: "Fournisseur supprimé",
         description: "Le fournisseur a été supprimé avec succès",

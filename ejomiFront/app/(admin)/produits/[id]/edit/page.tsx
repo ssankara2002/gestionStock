@@ -2,8 +2,11 @@
 
 import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
-import { ArrowLeft, Save, Trash2, Upload } from "lucide-react"
+import { ArrowLeft, Save, Trash2, Upload, Link2 } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,125 +18,118 @@ import { DeleteConfirmationDialog } from "@/components/shared/delete-confirmatio
 import type { Produit } from "@/types/produit"
 import { produitService } from "@/services"
 import { PermissionGuard } from "@/components/permissions"
+import { produitSchema, type ProduitFormValues } from "@/lib/validations"
 
 export default function ModifierProduitPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { toast } = useToast()
   const [produit, setProduit] = useState<Produit | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageUrl, setImageUrl] = useState("")
+  const [imageMode, setImageMode] = useState<"file" | "url">("file")
 
-  const [formData, setFormData] = useState({
-    libelle: "",
-    description: "",
-    image: "",
-    prixDeVenteUnitaire: "",
-    seuilAlerteMagasin: "",
-    seuilAlerteBoutique: "",
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProduitFormValues>({
+    resolver: zodResolver(produitSchema),
+    defaultValues: { libelle: "", description: "", prixDeVenteUnitaire: 0, seuilAlerteMagasin: undefined, seuilAlerteBoutique: undefined },
   })
 
   useEffect(() => {
     const fetchProduit = async () => {
       try {
         const res = await produitService.getById(resolvedParams.id)
-        const produitData = res.data.data
+        const produitData = (res as any).data?.data || res.data
         setProduit(produitData)
-        setFormData({
+        reset({
           libelle: produitData.libelle || "",
           description: produitData.description || "",
-          image: produitData.image || "",
-          prixDeVenteUnitaire: produitData.prixDeVenteUnitaire?.toString() || "",
-          seuilAlerteMagasin: produitData.stockMagasin?.seuilAlerte?.toString() ?? "",
-          seuilAlerteBoutique: produitData.stockBoutique?.seuilAlerte?.toString() ?? "",
+          prixDeVenteUnitaire: produitData.prixDeVenteUnitaire ?? 0,
+          seuilAlerteMagasin: produitData.stockMagasin?.seuilAlerte ?? undefined,
+          seuilAlerteBoutique: produitData.stockBoutique?.seuilAlerte ?? undefined,
         })
-        // Afficher l'image actuelle depuis le serveur
         if (produitData.image) {
-          const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api").replace("/api", "");
-          setImagePreview(`${apiUrl}/uploads/${produitData.image}`)
+          const img = produitData.image
+          if (img.startsWith("http")) {
+            setImagePreview(img)
+          } else {
+            const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api").replace("/api", "")
+            setImagePreview(`${apiUrl}/uploads/${img}`)
+          }
         }
       } catch {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger le produit",
-          variant: "destructive",
-        })
+        toast({ title: "Erreur", description: "Impossible de charger le produit", variant: "destructive" })
       }
     }
     fetchProduit()
-  }, [resolvedParams.id, toast])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData({
-      ...formData,
-      [name]: value,
-    })
-  }
+  }, [resolvedParams.id, toast, reset])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
       setImageFile(file)
+      setImageUrl("")
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
+      reader.onloadend = () => setImagePreview(reader.result as string)
       reader.readAsDataURL(file)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleImageUrlChange = (url: string) => {
+    setImageUrl(url)
+    setImageFile(null)
+    if (url) setImagePreview(url)
+  }
+
+  const onSubmit = async (data: ProduitFormValues) => {
     setIsSubmitting(true)
     try {
       const dataToUpdate = new FormData()
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key !== "image") {
-          dataToUpdate.append(key, String(value))
-        }
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== "") dataToUpdate.append(key, String(value))
       })
-      if (imageFile) {
-        dataToUpdate.append("image", imageFile)
-      }
+      if (imageFile) dataToUpdate.append("image", imageFile)
+      if (imageUrl) dataToUpdate.append("imageUrl", imageUrl)
 
-  const res = await produitService.update(resolvedParams.id, dataToUpdate)
-  // Backend responses follow the shape { success: boolean, data: produit }
-  const updatedProduit = (res as any).data?.data || (res as any).data
-      toast({
-        title: "Succès",
-        description: "Produit mis à jour avec succès",
-      })
+      const res = await produitService.update(resolvedParams.id, dataToUpdate)
+      const updatedProduit = (res as any).data?.data || (res as any).data
 
-      // Si aucune nouvelle image n'a été uploadée, s'assurer que l'aperçu affiche l'image enregistrée
+      toast({ title: "Succès", description: "Produit mis à jour avec succès" })
+
       if (!imageFile && updatedProduit?.image) {
-        const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api").replace("/api", "");
-        setImagePreview(`${apiUrl}/uploads/${updatedProduit.image}`)
+        const img = updatedProduit.image
+        if (img.startsWith("http")) {
+          setImagePreview(img)
+        } else {
+          const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api").replace("/api", "")
+          setImagePreview(`${apiUrl}/uploads/${img}`)
+        }
       }
 
-      // Mettre à jour l'état local produit et formData
       if (updatedProduit) {
         setProduit(updatedProduit)
-        setFormData({
+        reset({
           libelle: updatedProduit.libelle || "",
           description: updatedProduit.description || "",
-          image: updatedProduit.image || "",
-          prixDeVenteUnitaire: updatedProduit.prixDeVenteUnitaire?.toString() || "",
-          seuilAlerteMagasin: updatedProduit.stockMagasin?.seuilAlerte?.toString() ?? "",
-          seuilAlerteBoutique: updatedProduit.stockBoutique?.seuilAlerte?.toString() ?? "",
+          prixDeVenteUnitaire: updatedProduit.prixDeVenteUnitaire ?? 0,
+          seuilAlerteMagasin: updatedProduit.stockMagasin?.seuilAlerte ?? undefined,
+          seuilAlerteBoutique: updatedProduit.stockBoutique?.seuilAlerte ?? undefined,
         })
       }
 
+      queryClient.invalidateQueries({ queryKey: ['produits'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       router.push("/produits")
-      router.refresh()
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.response?.data?.error || error.message,
-        variant: "destructive",
-      })
+      toast({ title: "Erreur", description: error.response?.data?.error || error.message, variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -142,18 +138,12 @@ export default function ModifierProduitPage({ params }: { params: Promise<{ id: 
   const handleDelete = async () => {
     try {
       await produitService.delete(resolvedParams.id)
-      toast({
-        title: "Produit supprimé",
-        description: "Le produit a été supprimé avec succès",
-      })
-      router.push("/magasinier/produits")
-      router.refresh()
+      queryClient.invalidateQueries({ queryKey: ['produits'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      toast({ title: "Produit supprimé", description: "Le produit a été supprimé avec succès" })
+      router.push("/produits")
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.response?.data?.error || error.message,
-        variant: "destructive",
-      })
+      toast({ title: "Erreur", description: error.response?.data?.error || error.message, variant: "destructive" })
     }
   }
 
@@ -164,22 +154,18 @@ export default function ModifierProduitPage({ params }: { params: Promise<{ id: 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
-            <Link href="/produits">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+            <Link href="/produits"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
           <h1 className="text-xl sm:text-2xl font-bold">Modifier le produit</h1>
         </div>
         <div className="flex gap-2">
-         <PermissionGuard permissions={["produit.delete"]} > 
+          <PermissionGuard permissions={["produit.delete"]}>
             <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Supprimer
+              <Trash2 className="h-4 w-4 mr-2" />Supprimer
             </Button>
           </PermissionGuard>
           <Button type="submit" form="produit-form" disabled={isSubmitting}>
-            <Save className="h-4 w-4 mr-2" />
-            {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+            <Save className="h-4 w-4 mr-2" />{isSubmitting ? "Enregistrement..." : "Enregistrer"}
           </Button>
         </div>
       </div>
@@ -190,80 +176,89 @@ export default function ModifierProduitPage({ params }: { params: Promise<{ id: 
           <CardDescription>Modifiez les informations du produit</CardDescription>
         </CardHeader>
         <CardContent>
-          <form id="produit-form" onSubmit={handleSubmit} className="space-y-6">
+          <form id="produit-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="libelle">Nom</Label>
-                <Input id="libelle" name="libelle" value={formData.libelle} onChange={handleChange} />
+                <Label htmlFor="libelle">Nom <span className="text-red-500">*</span></Label>
+                <Input id="libelle" {...register("libelle")} />
+                {errors.libelle && <p className="text-sm text-red-500 mt-1">{errors.libelle.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prixDeVenteUnitaire">Prix de vente (FCFA)</Label>
-                <Input
-                  id="prixDeVenteUnitaire"
-                  name="prixDeVenteUnitaire"
-                  type="number"
-                  min="0"
-                  value={formData.prixDeVenteUnitaire}
-                  onChange={handleChange}
-                />
+                <Label htmlFor="prixDeVenteUnitaire">Prix de vente (FCFA) <span className="text-red-500">*</span></Label>
+                <Input id="prixDeVenteUnitaire" type="number" min="0" {...register("prixDeVenteUnitaire")} />
+                {errors.prixDeVenteUnitaire && <p className="text-sm text-red-500 mt-1">{errors.prixDeVenteUnitaire.message}</p>}
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={4}
-                />
+                <Label htmlFor="description">Description <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+                <Textarea id="description" rows={4} {...register("description")} />
+                {errors.description && <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="seuilAlerteMagasin">
                   Seuil d'alerte Magasin <span className="text-muted-foreground text-xs">(optionnel)</span>
                 </Label>
-                <Input
-                  id="seuilAlerteMagasin"
-                  name="seuilAlerteMagasin"
-                  type="number"
-                  min="0"
-                  placeholder="10"
-                  value={formData.seuilAlerteMagasin}
-                  onChange={handleChange}
-                />
+                <Input id="seuilAlerteMagasin" type="number" min="0" placeholder="10" {...register("seuilAlerteMagasin")} />
+                {errors.seuilAlerteMagasin && <p className="text-sm text-red-500 mt-1">{errors.seuilAlerteMagasin.message}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="seuilAlerteBoutique">
                   Seuil d'alerte Boutique <span className="text-muted-foreground text-xs">(optionnel)</span>
                 </Label>
-                <Input
-                  id="seuilAlerteBoutique"
-                  name="seuilAlerteBoutique"
-                  type="number"
-                  min="0"
-                  placeholder="5"
-                  value={formData.seuilAlerteBoutique}
-                  onChange={handleChange}
-                />
+                <Input id="seuilAlerteBoutique" type="number" min="0" placeholder="5" {...register("seuilAlerteBoutique")} />
+                {errors.seuilAlerteBoutique && <p className="text-sm text-red-500 mt-1">{errors.seuilAlerteBoutique.message}</p>}
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label>Image du produit</Label>
+              <div className="space-y-3 md:col-span-2">
+                <Label>Image du produit <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+
+                {/* Mode toggle */}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={imageMode === "file" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setImageMode("file")}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />Fichier
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={imageMode === "url" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setImageMode("url")}
+                  >
+                    <Link2 className="h-4 w-4 mr-2" />URL
+                  </Button>
+                </div>
+
+                {/* Preview */}
                 {imagePreview && (
-                  <div className="mt-2 w-32 h-32 relative">
-                    <img src={imagePreview} alt="Aperçu" className="w-full h-full object-cover rounded-md" />
+                  <div className="w-32 h-32 relative">
+                    <img src={imagePreview} alt="Aperçu" className="w-full h-full object-cover rounded-md border" />
                   </div>
                 )}
-                <Label htmlFor="image-upload" className="w-full">
-                  <div className="mt-2 flex items-center justify-center w-full cursor-pointer rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background hover:bg-accent hover:text-accent-foreground">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Changer l'image
+
+                {imageMode === "file" ? (
+                  <Label htmlFor="image-upload" className="w-full">
+                    <div className="flex items-center justify-center w-full cursor-pointer rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background hover:bg-accent hover:text-accent-foreground">
+                      <Upload className="h-4 w-4 mr-2" />Changer l'image
+                    </div>
+                    <Input id="image-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" />
+                  </Label>
+                ) : (
+                  <div className="space-y-1">
+                    <Input
+                      placeholder="https://exemple.com/image.jpg"
+                      value={imageUrl}
+                      onChange={(e) => handleImageUrlChange(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Collez l'URL directe d'une image</p>
                   </div>
-                  <Input id="image-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" />
-                </Label>
+                )}
               </div>
             </div>
           </form>

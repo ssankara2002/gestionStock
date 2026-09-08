@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Footer } from "@/components/layout/footer"
 import { HomeHeader } from "@/components/layout/home-header"
 import type { Produit } from "@/types/produit"
-import { produitService } from "@/services"
+import apiClient from "@/services/api-client"
 
 export default function ProduitsPublicPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -21,7 +21,7 @@ export default function ProduitsPublicPage() {
   useEffect(() => {
     const fetchProduits = async () => {
       try {
-        const res = await produitService.getAll()
+        const res = await apiClient.get("/produits/public")
         setProduits(res.data.data || [])
       } catch (error) {
         console.error("Erreur lors du chargement des produits:", error)
@@ -79,7 +79,7 @@ export default function ProduitsPublicPage() {
               {filteredProducts.map((product) => {
                 const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:3000"
                 const imageUrl = product.image
-                  ? `${baseUrl}/uploads/${product.image}`
+                  ? (product.image.startsWith("http") ? product.image : `${baseUrl}/uploads/${product.image}`)
                   : "/placeholder.svg?height=300&width=400"
 
                 return (

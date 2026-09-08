@@ -3,7 +3,10 @@
 import { useState, useEffect, use } from "react"
 import { useRouter, notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Trash2, Search, Save } from "lucide-react"
+import { ArrowLeft, Trash2, Search, Save } from "lucide-react"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +30,15 @@ import {
 } from "@/components/ui/dialog"
 import { Produit } from "@/types/produit"
 import { commandesService } from "@/services/commande-service"
+import { commandeSchema, type CommandeFormValues } from "@/lib/validations"
+
+// Schema for main form fields only (lignes managed via useState)
+const mainCommandeSchema = commandeSchema.pick({
+  dateCommande: true,
+  clientId: true,
+  reductionGlobale: true,
+})
+type MainCommandeFormValues = z.infer<typeof mainCommandeSchema>
 
 interface LigneCommandeLocal extends LigneCommandeInput {
   id: string // ID temporaire pour gérer l'affichage
@@ -42,13 +54,31 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
   const [clients, setClients] = useState<User[]>([])
 
   const [lignesCommande, setLignesCommande] = useState<LigneCommandeLocal[]>([])
-  const [dateCommande, setDateCommande] = useState(new Date().toISOString().split("T")[0])
-  const [clientId, setClientId] = useState<number | undefined>(undefined)
-  const [reductionGlobale, setReductionGlobale] = useState(0)
   const [montantTotal, setMontantTotal] = useState(0)
 
+  const [statut, setStatut] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedQuantity, setSelectedQuantity] = useState(1)
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<MainCommandeFormValues>({
+    resolver: zodResolver(mainCommandeSchema),
+    defaultValues: {
+      dateCommande: new Date().toISOString().split("T")[0],
+      clientId: undefined,
+      reductionGlobale: 0,
+    },
+  })
+
+  // Watch reductionGlobale for total calculation
+  const reductionGlobale = watch("reductionGlobale") ?? 0
+  const clientId = watch("clientId")
 
   // Charger les données initiales (commande, produits, clients)
   useEffect(() => {
@@ -75,10 +105,7 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
         }
 
         // Pré-remplir le formulaire avec les données de la commande
-        setClientId(commandeData.clientId)
-        setDateCommande(new Date(commandeData.dateCommande).toISOString().split("T")[0])
         setStatut(commandeData.statut)
-        setReductionGlobale(commandeData.reduction || 0)
         setLignesCommande(
           commandeData.lignes.map((ligne: any) => ({
             id: Math.random().toString(36).substring(2, 15), // ID local
@@ -88,6 +115,13 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
             reduction: 0, // La réduction par ligne n'est pas gérée dans le modèle actuel, on la met à 0
           }))
         )
+
+        // Reset form with loaded data
+        reset({
+          dateCommande: new Date(commandeData.dateCommande).toISOString().split("T")[0],
+          clientId: commandeData.clientId,
+          reductionGlobale: commandeData.reduction || 0,
+        })
       } catch (error) {
         toast({
           title: "Erreur de chargement",
@@ -100,7 +134,7 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
       }
     }
     loadInitialData()
-  }, [unwrappedParams.id, toast, router])
+  }, [unwrappedParams.id, toast, router, reset])
 
   // Filtrer les produits
   const filteredProducts = products.filter(
@@ -118,7 +152,7 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
     }, 0)
 
     // La réduction globale est aussi un montant absolu en FCFA
-    const totalAvecReduction = Math.max(0, total - reductionGlobale)
+    const totalAvecReduction = Math.max(0, total - (Number(reductionGlobale) || 0))
     setMontantTotal(Number.parseFloat(totalAvecReduction.toFixed(2)))
   }, [lignesCommande, reductionGlobale])
 
@@ -176,11 +210,11 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
   }
 
   // Enregistrer les modifications
-  const enregistrerModifications = async () => {
-    if (!clientId || !lignesCommande.length) {
+  const onSubmit = async (data: MainCommandeFormValues) => {
+    if (lignesCommande.length < 1) {
       toast({
         title: "Erreur",
-        description: "Un client et au moins un produit sont requis.",
+        description: "Au moins un produit est requis.",
         variant: "destructive",
       })
       return
@@ -188,9 +222,9 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
 
     try {
       const commandeData: CommandeUpdateData = {
-        dateCommande: new Date(dateCommande),
-        clientId,
-        reduction: reductionGlobale,
+        dateCommande: new Date(data.dateCommande),
+        clientId: data.clientId,
+        reduction: data.reductionGlobale,
         lignes: lignesCommande.map(({ id, ...ligne }) => ligne),
       }
 
@@ -233,282 +267,315 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
             Modifier la Vente #{unwrappedParams.id}
           </h1>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-8">
-              {/* Informations de la vente */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informations de la vente</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="date">Date</Label>
-                      <Input
-                        id="dateCommande"
-                        type="date"
-                        value={dateCommande}
-                        onChange={(e) => setDateCommande(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="client">Client</Label>
-                      <AppSelect
-                        placeholder="Sélectionner un client"
-                        value={clientId ? { value: clientId.toString(), label: clients.find(c => c.id === clientId) ? `${clients.find(c => c.id === clientId)!.prenom} ${clients.find(c => c.id === clientId)!.nom}` : "" } : null}
-                        onChange={(opt: any) => setClientId(opt ? parseInt(opt.value) : undefined)}
-                        options={clients.map(c => ({ value: c.id.toString(), label: `${c.prenom} ${c.nom}` }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="reduction">Réduction globale (FCFA)</Label>
-                      <Input
-                        id="reduction"
-                        type="number"
-                        min="0"
-                        value={reductionGlobale}
-                        onChange={(e) => setReductionGlobale(Number.parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Ajouter des produits */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ajouter des produits</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="relative flex-1 w-full">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Rechercher un produit..."
-                        className="pl-9"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                      {searchTerm && (
-                        <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                          {filteredProducts.length > 0 ? (
-                            filteredProducts.map((product) => (
-                              <div
-                                key={product.id}
-                                className="p-2 hover:bg-muted cursor-pointer"
-                                onClick={() => {
-                                  setSearchTerm(product.libelle)
-                                  ajouterLigne(product.id.toString())
-                                }}
-                              >
-                                <p className="font-medium">{product.libelle}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {product.prixDeVenteUnitaire} FCFA - Stock: {product.quantiteStock}
-                                </p>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="p-2 text-center text-sm text-muted-foreground">
-                              Aucun produit trouvé
-                            </div>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-8">
+                {/* Informations de la vente */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informations de la vente</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="dateCommande">Date</Label>
+                        <Input
+                          id="dateCommande"
+                          type="date"
+                          {...register("dateCommande")}
+                        />
+                        {errors.dateCommande && (
+                          <p className="text-sm text-red-500 mt-1">{errors.dateCommande.message}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="clientId">Client</Label>
+                        <Controller
+                          name="clientId"
+                          control={control}
+                          render={({ field }) => (
+                            <AppSelect
+                              placeholder="Sélectionner un client"
+                              value={
+                                field.value
+                                  ? {
+                                      value: field.value.toString(),
+                                      label: (() => {
+                                        const c = clients.find((c) => c.id === field.value)
+                                        return c ? `${c.prenom} ${c.nom}` : ""
+                                      })(),
+                                    }
+                                  : null
+                              }
+                              onChange={(opt: any) =>
+                                field.onChange(opt ? parseInt(opt.value) : undefined)
+                              }
+                              options={clients.map((c) => ({
+                                value: c.id.toString(),
+                                label: `${c.prenom} ${c.nom}`,
+                              }))}
+                            />
                           )}
-                        </div>
-                      )}
+                        />
+                        {errors.clientId && (
+                          <p className="text-sm text-red-500 mt-1">{errors.clientId.message}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <Input
-                        type="number"
-                        min="1"
-                        placeholder="Qté"
-                        value={selectedQuantity}
-                        onChange={(e) => setSelectedQuantity(Number.parseInt(e.target.value) || 1)}
-                        className="w-24"
-                      />
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="reductionGlobale">Réduction globale (FCFA)</Label>
+                        <Input
+                          id="reductionGlobale"
+                          type="number"
+                          min="0"
+                          {...register("reductionGlobale")}
+                        />
+                        {errors.reductionGlobale && (
+                          <p className="text-sm text-red-500 mt-1">{errors.reductionGlobale.message}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Lignes de commande */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Détails de la vente</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {lignesCommande.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                      <h3 className="mt-2 text-lg font-medium">Aucun produit</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Ajoutez des produits à la vente.
-                      </p>
+                {/* Ajouter des produits */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ajouter des produits</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Rechercher un produit..."
+                          className="pl-9"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        {searchTerm && (
+                          <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                            {filteredProducts.length > 0 ? (
+                              filteredProducts.map((product) => (
+                                <div
+                                  key={product.id}
+                                  className="p-2 hover:bg-muted cursor-pointer"
+                                  onClick={() => {
+                                    setSearchTerm(product.libelle)
+                                    ajouterLigne(product.id.toString())
+                                  }}
+                                >
+                                  <p className="font-medium">{product.libelle}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {product.prixDeVenteUnitaire} FCFA - Stock: {product.stockBoutique?.quantite ?? 0}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-2 text-center text-sm text-muted-foreground">
+                                Aucun produit trouvé
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="Qté"
+                          value={selectedQuantity}
+                          onChange={(e) => setSelectedQuantity(Number.parseInt(e.target.value) || 1)}
+                          className="w-24"
+                        />
+                      </div>
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Produit</TableHead>
-                            <TableHead className="text-right">Prix unitaire</TableHead>
-                            <TableHead className="text-center">Quantité</TableHead>
-                            <TableHead className="text-right">Réduction (FCFA)</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                            <TableHead className="w-[70px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {lignesCommande.map((ligne) => {
-                            const product = products.find((p) => p.id === ligne.produitId);
-                            if (!product) return null
+                  </CardContent>
+                </Card>
 
-                            const prixTotal = ligne.prixUnitaire * ligne.quantite
-                            const total = Math.max(0, prixTotal - ligne.reduction)
+                {/* Lignes de commande */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Détails de la vente</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {lignesCommande.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                        <h3 className="mt-2 text-lg font-medium">Aucun produit</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Ajoutez des produits à la vente.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Produit</TableHead>
+                              <TableHead className="text-right">Prix unitaire</TableHead>
+                              <TableHead className="text-center">Quantité</TableHead>
+                              <TableHead className="text-right">Réduction (FCFA)</TableHead>
+                              <TableHead className="text-right">Total</TableHead>
+                              <TableHead className="w-[70px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {lignesCommande.map((ligne) => {
+                              const product = products.find((p) => p.id === ligne.produitId)
+                              if (!product) return null
 
-                            return (
-                              <TableRow key={ligne.id}>
-                                <TableCell className="font-medium">{product?.libelle || 'Produit introuvable'}</TableCell>
-                                <TableCell className="text-right">{ligne.prixUnitaire.toFixed(2)} FCFA</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center justify-center">
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-7 w-7 rounded-r-none"
-                                      onClick={() => updateQuantite(ligne.id, ligne.quantite - 1)}
-                                    >
-                                      -
-                                    </Button>
-                                    <div className="flex h-7 w-10 items-center justify-center border-y">
-                                      {ligne.quantite}
+                              const prixTotal = ligne.prixUnitaire * ligne.quantite
+                              const total = Math.max(0, prixTotal - ligne.reduction)
+
+                              return (
+                                <TableRow key={ligne.id}>
+                                  <TableCell className="font-medium">{product?.libelle || 'Produit introuvable'}</TableCell>
+                                  <TableCell className="text-right">{ligne.prixUnitaire.toFixed(2)} FCFA</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center justify-center">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-r-none"
+                                        onClick={() => updateQuantite(ligne.id, ligne.quantite - 1)}
+                                      >
+                                        -
+                                      </Button>
+                                      <div className="flex h-7 w-10 items-center justify-center border-y">
+                                        {ligne.quantite}
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-l-none"
+                                        onClick={() => updateQuantite(ligne.id, ligne.quantite + 1)}
+                                      >
+                                        +
+                                      </Button>
                                     </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      className="w-20 h-7 text-right ml-auto"
+                                      value={ligne.reduction}
+                                      onChange={(e) => updateReduction(ligne.id, Number.parseFloat(e.target.value) || 0)}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium">{total.toFixed(2)} FCFA</TableCell>
+                                  <TableCell>
                                     <Button
-                                      variant="outline"
+                                      type="button"
+                                      variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 rounded-l-none"
-                                      onClick={() => updateQuantite(ligne.id, ligne.quantite + 1)}
+                                      className="h-7 w-7 text-destructive"
+                                      onClick={() => supprimerLigne(ligne.id)}
                                     >
-                                      +
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Supprimer</span>
                                     </Button>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    className="w-20 h-7 text-right ml-auto"
-                                    value={ligne.reduction}
-                                    onChange={(e) => updateReduction(ligne.id, Number.parseFloat(e.target.value) || 0)}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right font-medium">{total.toFixed(2)} FCFA</TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive"
-                                    onClick={() => supprimerLigne(ligne.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Supprimer</span>
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
-            {/* Récapitulatif */}
-            <div>
-              <Card className="sticky top-8">
-                <CardHeader>
-                  <CardTitle>Récapitulatif</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sous-total</span>
-                      <span>
-                        {lignesCommande
-                          .reduce((sum, ligne) => sum + ligne.prixUnitaire * ligne.quantite, 0)
-                          .toFixed(2)}{" "}
-                        FCFA
-                      </span>
-                    </div>
-
-                    {lignesCommande.some((ligne) => ligne.reduction > 0) && (
-                      <div className="flex justify-between text-primary">
-                        <span>Réductions produits</span>
+              {/* Récapitulatif */}
+              <div>
+                <Card className="sticky top-8">
+                  <CardHeader>
+                    <CardTitle>Récapitulatif</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Sous-total</span>
                         <span>
-                          -
                           {lignesCommande
-                            .reduce((sum, ligne) => sum + ligne.reduction, 0)
+                            .reduce((sum, ligne) => sum + ligne.prixUnitaire * ligne.quantite, 0)
                             .toFixed(2)}{" "}
                           FCFA
                         </span>
                       </div>
-                    )}
 
-                    {reductionGlobale > 0 && (
-                      <div className="flex justify-between text-primary">
-                        <span>Réduction globale</span>
-                        <span>
-                          -{reductionGlobale.toFixed(2)} FCFA
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex justify-between font-medium text-lg">
-                    <span>Total</span>
-                    <span>{montantTotal.toFixed(2)} FCFA</span>
-                  </div>
-
-                  <div className="pt-4">
-                    <div className="rounded-lg bg-muted p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">
-                          <p className="font-medium">Client</p>
-                          <p className="text-muted-foreground">
-                            {clientId
-                              ? (() => {
-                                  const client = clients.find((c) => c.id === clientId)
-                                  return client ? `${client.prenom} ${client.nom}`.trim() : "Client non sélectionné"
-                                })()
-                              : "Client non sélectionné"}
-                          </p>
+                      {lignesCommande.some((ligne) => ligne.reduction > 0) && (
+                        <div className="flex justify-between text-primary">
+                          <span>Réductions produits</span>
+                          <span>
+                            -
+                            {lignesCommande
+                              .reduce((sum, ligne) => sum + ligne.reduction, 0)
+                              .toFixed(2)}{" "}
+                            FCFA
+                          </span>
                         </div>
-                        <div className="text-sm text-right">
-                          <p className="font-medium">Nombre d'articles</p>
-                          <p className="text-muted-foreground">
-                            {lignesCommande.reduce((sum, ligne) => sum + ligne.quantite, 0)}
-                          </p>
+                      )}
+
+                      {Number(reductionGlobale) > 0 && (
+                        <div className="flex justify-between text-primary">
+                          <span>Réduction globale</span>
+                          <span>
+                            -{Number(reductionGlobale).toFixed(2)} FCFA
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex justify-between font-medium text-lg">
+                      <span>Total</span>
+                      <span>{montantTotal.toFixed(2)} FCFA</span>
+                    </div>
+
+                    <div className="pt-4">
+                      <div className="rounded-lg bg-muted p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <p className="font-medium">Client</p>
+                            <p className="text-muted-foreground">
+                              {clientId
+                                ? (() => {
+                                    const client = clients.find((c) => c.id === clientId)
+                                    return client ? `${client.prenom} ${client.nom}`.trim() : "Client non sélectionné"
+                                  })()
+                                : "Client non sélectionné"}
+                            </p>
+                          </div>
+                          <div className="text-sm text-right">
+                            <p className="font-medium">Nombre d'articles</p>
+                            <p className="text-muted-foreground">
+                              {lignesCommande.reduce((sum, ligne) => sum + ligne.quantite, 0)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                  <Button onClick={enregistrerModifications} className="w-full" size="lg">
-                    <Save className="mr-2 h-4 w-4" />
-                    Enregistrer les modifications
-                  </Button>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href={`/vendeur/commandes/${unwrappedParams.id}`}>Annuler</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-4">
+                    <Button type="submit" className="w-full" size="lg">
+                      <Save className="mr-2 h-4 w-4" />
+                      Enregistrer les modifications
+                    </Button>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href={`/vendeur/commandes/${unwrappedParams.id}`}>Annuler</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       </main>
     </div>

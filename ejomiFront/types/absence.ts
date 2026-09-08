@@ -9,7 +9,9 @@ export interface Absence {
 }
 
 export interface AbsenceCreateData {
-  employeId: string
+  employeId: number
   date: string
-  motif: string
+  motif?: string
 }
+
+export interface AbsenceUpdateData extends Partial<AbsenceCreateData> {}

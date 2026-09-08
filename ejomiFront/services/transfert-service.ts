@@ -15,4 +15,8 @@ export const transfertService = {
   create: async (data: TransfertCreateData) => {
     return apiClient.post<{ data: TransfertStock }>('/transferts', data)
   },
+
+  createBulk: async (data: { lignes: { produitId: number; quantite: number }[]; sens: string; motif?: string }) => {
+    return apiClient.post<{ data: TransfertStock[] }>('/transferts/bulk', data)
+  },
 }

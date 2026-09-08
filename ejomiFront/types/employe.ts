@@ -32,9 +32,9 @@ export interface EmployeWithUserCreateData {
   // Données utilisateur
   nom: string
   prenom: string
-  email?: string
+  email?: string | null
   adresse: string
-  tel: string
+  tel?: string | null
   password?: string
   roleId?: string
   // Données employé

@@ -236,18 +236,24 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
                     <TableHead>Produit</TableHead>
                     <TableHead>Date fabrication</TableHead>
                     <TableHead>Date péremption</TableHead>
-                    <TableHead className="text-center">Quantité</TableHead>
-                    <TableHead className="text-right">Prix unitaire</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-center">Qté</TableHead>
+                    <TableHead className="text-right">Prix achat/u</TableHead>
+                    <TableHead className="text-right">Prix vente/u</TableHead>
+                    <TableHead className="text-right">Marge/u</TableHead>
+                    <TableHead className="text-right">Total achat</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {approvisionnement.lignes?.map((ligne) => {
-                    const produit = getProduitById(Number(ligne.produitId))
+                    const produit = getProduitById(Number(ligne.produitId)) || (ligne as any).produit
+                    const prixAchat = ligne.montant / (ligne.quantite || 1)
+                    const prixVente = produit?.prixDeVenteUnitaire ?? 0
+                    const marge = prixVente - prixAchat
+                    const margePct = prixAchat > 0 ? ((marge / prixAchat) * 100).toFixed(1) : null
                     return (
                       <TableRow key={ligne.id}>
                         <TableCell className="font-medium">
-                          {produit?.libelle || (ligne as any).produit?.libelle || 'Produit inconnu'}
+                          {produit?.libelle || 'Produit inconnu'}
                         </TableCell>
                         <TableCell className="text-sm">
                           {(ligne as any).dateFabrication ? new Date((ligne as any).dateFabrication).toLocaleDateString('fr-FR') : <span className="text-muted-foreground">—</span>}
@@ -256,11 +262,15 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
                           {(ligne as any).datePeremption ? new Date((ligne as any).datePeremption).toLocaleDateString('fr-FR') : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-center">{ligne.quantite}</TableCell>
-                        <TableCell className="text-right">
-                          {(ligne.montant / ligne.quantite).toFixed(2)} FCFA
+                        <TableCell className="text-right">{prixAchat.toLocaleString()} FCFA</TableCell>
+                        <TableCell className="text-right">{prixVente > 0 ? `${prixVente.toLocaleString()} FCFA` : <span className="text-muted-foreground">—</span>}</TableCell>
+                        <TableCell className={`text-right font-semibold ${marge >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {prixVente > 0 ? (
+                            <span title={`${margePct}%`}>{marge.toLocaleString()} FCFA {margePct ? `(${margePct}%)` : ""}</span>
+                          ) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {ligne.montant.toFixed(2)} FCFA
+                          {ligne.montant.toLocaleString()} FCFA
                         </TableCell>
                       </TableRow>
                     )

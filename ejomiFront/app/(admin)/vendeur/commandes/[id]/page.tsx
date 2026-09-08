@@ -131,6 +131,12 @@ export default function CommandeDetailPage({ params }: { params: Promise<{ id: s
   const sousTotal = commande.lignes?.reduce((total, ligne) => total + ligne.montant, 0) || 0
   const total = sousTotal - (commande.reduction || 0)
 
+  // Marge FIFO depuis margeSummary (retourné par l'API) ou calcul local
+  const margeSummary = (commande as any).margeSummary
+  const coutRevientTotal = margeSummary?.coutRevient ?? (commande.lignes || []).reduce((s, l) => s + (Number((l as any).coutRevient ?? 0) * Number((l as any).quantiteCommande ?? (l as any).quantite ?? 0)), 0)
+  const margeTotal = margeSummary?.marge ?? (total - coutRevientTotal)
+  const margePct = coutRevientTotal > 0 ? ((margeTotal / coutRevientTotal) * 100).toFixed(1) : null
+
   // Fonction pour supprimer la commande
   const handleDelete = async () => {
     try {
@@ -247,7 +253,7 @@ export default function CommandeDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card>
           <CardHeader>
             <CardTitle>Informations générales</CardTitle>
@@ -342,6 +348,37 @@ export default function CommandeDetailPage({ params }: { params: Promise<{ id: s
             )}
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Analyse de marge (FIFO)</CardTitle>
+            <CardDescription>Coût réel basé sur l'ordre d'entrée en stock</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Coût de revient:</span>
+              <span className="font-medium">{coutRevientTotal.toLocaleString()} FCFA</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Chiffre d'affaires:</span>
+              <span className="font-medium">{total.toLocaleString()} FCFA</span>
+            </div>
+            <Separator className="my-2" />
+            <div className="flex justify-between text-lg font-bold">
+              <span>Marge brute:</span>
+              <span className={margeTotal >= 0 ? "text-green-600" : "text-red-600"}>
+                {margeTotal.toLocaleString()} FCFA
+              </span>
+            </div>
+            {margePct !== null && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Taux de marge:</span>
+                <span className={`font-bold ${Number(margePct) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {margePct}%
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="mb-6">
@@ -355,36 +392,37 @@ export default function CommandeDetailPage({ params }: { params: Promise<{ id: s
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4">Produit</th>
-                  <th className="text-center py-3 px-4">Prix unitaire</th>
-                  <th className="text-center py-3 px-4">Quantité</th>
-                  <th className="text-center py-3 px-4">Réduction</th>
+                  <th className="text-center py-3 px-4">Prix vente</th>
+                  <th className="text-center py-3 px-4">Coût revient</th>
+                  <th className="text-center py-3 px-4">Qté</th>
+                  <th className="text-center py-3 px-4">Marge/u</th>
                   <th className="text-right py-3 px-4">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {(commande.lignes || []).map((ligne) => (
-                  <tr key={ligne.id} className="border-b">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center">
-                        <div>
-                          <div className="font-medium">{ligne.produit ? ligne.produit.libelle : "Produit inconnu"}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {ligne.produit ? ligne.produit.categorie : ""}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="text-center py-3 px-4">
-                      {ligne.produit?.prixDeVenteUnitaire.toLocaleString()} FCFA
-                    </td>
-                    <td className="text-center py-3 px-4">{(ligne as any).quantite || 0}</td>
-                    <td className="text-center py-3 px-4">
-                      {((ligne as any).reduction?.toLocaleString && (ligne as any).reduction?.toLocaleString()) || 0}{" "}
-                      FCFA
-                    </td>
-                    <td className="text-right py-3 px-4 font-medium">{ligne.montant.toLocaleString()} FCFA</td>
-                  </tr>
-                ))}
+                {(commande.lignes || []).map((ligne) => {
+                  const qte = Number((ligne as any).quantiteCommande ?? (ligne as any).quantite ?? 0)
+                  const coutU = Number((ligne as any).coutRevient ?? 0)
+                  const prixU = Number((ligne as any).prixUnitaire ?? ligne.produit?.prixDeVenteUnitaire ?? 0)
+                  const margeU = prixU - coutU
+                  const hasCout = coutU > 0
+                  return (
+                    <tr key={ligne.id} className="border-b">
+                      <td className="py-3 px-4">
+                        <div className="font-medium">{ligne.produit ? ligne.produit.libelle : "Produit inconnu"}</div>
+                      </td>
+                      <td className="text-center py-3 px-4">{prixU.toLocaleString()} FCFA</td>
+                      <td className="text-center py-3 px-4 text-muted-foreground">
+                        {hasCout ? `${coutU.toLocaleString()} FCFA` : "—"}
+                      </td>
+                      <td className="text-center py-3 px-4">{qte}</td>
+                      <td className={`text-center py-3 px-4 font-semibold ${hasCout ? (margeU >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}>
+                        {hasCout ? `${margeU.toLocaleString()} FCFA` : "—"}
+                      </td>
+                      <td className="text-right py-3 px-4 font-medium">{ligne.montant.toLocaleString()} FCFA</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

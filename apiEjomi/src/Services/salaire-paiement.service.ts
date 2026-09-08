@@ -3,8 +3,10 @@ import PDFDocument from 'pdfkit'
 
 const prisma = new PrismaClient()
 
-const getAll = async () => {
+const getAll = async (entrepriseId?: number) => {
+  const where: any = entrepriseId ? { employe: { user: { entrepriseId } } } : {};
   return await prisma.salairePaiement.findMany({
+    where,
     include: {
       employe: {
         include: {

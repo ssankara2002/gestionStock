@@ -15,8 +15,9 @@ import {
   Eye,
   Store,
   Warehouse,
+  Clock,
 } from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { useQuery } from "@tanstack/react-query"
@@ -102,17 +103,19 @@ export default function ManagerDashboardPage() {
   const [stockAlerteLieu, setStockAlerteLieu] = useState<"boutique" | "magasin">("boutique")
 
   // Use React Query for caching and auto-refetching
-  const { data: stats, isLoading, isError } = useQuery({
+  const { data: stats, isLoading, isError, isFetching } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const response = await dashboardService.getStats()
       return response.data
     },
-    staleTime: 0,
-    refetchInterval: 60 * 1000, // Auto-refresh every minute
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
   })
 
-  if (isLoading) {
+  // Only show full loader on first load (no cached data)
+  if (isLoading && !stats) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -131,7 +134,7 @@ export default function ManagerDashboardPage() {
     )
   }
 
-  const { inventory, customers, orders, recentOrders, lowStockProducts, lowStockMagasinProducts, topSellingProducts, salesChartData, payments } = stats
+  const { inventory, customers, orders, recentOrders, lowStockProducts, lowStockMagasinProducts, topSellingProducts, salesChartData, payments, produitsProchesPeremption } = stats
 
   // Préparer les données pour le graphique en fonction de la période sélectionnée
   const getChartData = () => {
@@ -167,12 +170,15 @@ export default function ManagerDashboardPage() {
           <div className="container py-8">
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
             <div>
-              <h1 className="font-playfair text-3xl font-bold md:text-4xl">Tableau de bord</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="font-playfair text-3xl font-bold md:text-4xl">Tableau de bord</h1>
+                {isFetching && <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />}
+              </div>
               <p className="mt-1 text-muted-foreground">
                 Bienvenue, {user?.prenom || user?.nom || "Utilisateur"}. Voici un aperçu de l'activité.
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            {/* <div className="flex items-center gap-4">
               <Button variant="outline" size="sm">
                 <Calendar className="mr-2 h-4 w-4" />
                 Mai 2025
@@ -181,7 +187,7 @@ export default function ManagerDashboardPage() {
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Générer un rapport
               </Button>
-            </div>
+            </div> */}
           </div>
 
           {/* Key Metrics */}
@@ -402,39 +408,32 @@ export default function ManagerDashboardPage() {
                 <div className="h-[300px] w-full">
                   {chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 12 }}
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                        />
+                      <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                         <YAxis
                           yAxisId="left"
-                          tick={{ fontSize: 12 }}
-                          label={{ value: 'Ventes', angle: -90, position: 'insideLeft', fontSize: 12 }}
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v) => v}
+                          label={{ value: "Nb ventes", angle: -90, position: "insideLeft", fontSize: 11, dx: -5 }}
                         />
                         <YAxis
                           yAxisId="right"
                           orientation="right"
-                          tick={{ fontSize: 12 }}
-                          label={{ value: 'Montant (FCFA)', angle: 90, position: 'insideRight', fontSize: 12 }}
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                          label={{ value: "CA (FCFA)", angle: 90, position: "insideRight", fontSize: 11, dx: 10 }}
                         />
                         <Tooltip
-                          formatter={(value: number | undefined, name: string | undefined) => {
-                            if (!value) return ["0", name || ""]
-                            if (name === "montant") {
-                              return [value.toLocaleString() + " FCFA", "Montant"]
-                            }
-                            return [value, "Ventes"]
+                          formatter={(value: any, name: any) => {
+                            if (name === "CA (FCFA)") return [Number(value).toLocaleString() + " FCFA", name]
+                            return [value, name]
                           }}
                         />
                         <Legend />
-                        <Bar yAxisId="left" dataKey="commandes" fill="#d4af37" name="Ventes" />
-                        <Bar yAxisId="right" dataKey="montant" fill="#82ca9d" name="Montant (FCFA)" />
-                      </BarChart>
+                        <Bar yAxisId="left" dataKey="commandes" name="Nb de ventes" fill="#d4af37" radius={[4,4,0,0]} maxBarSize={40} />
+                        <Line yAxisId="right" type="monotone" dataKey="montant" name="CA (FCFA)" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
@@ -594,7 +593,7 @@ export default function ManagerDashboardPage() {
                         <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                           {product.image ? (
                             <Image
-                              src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${product.image}`}
+                              src={product.image.startsWith("http") ? product.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${product.image}`}
                               alt={product.name}
                               fill
                               className="object-cover"
@@ -627,6 +626,88 @@ export default function ManagerDashboardPage() {
                   <Link href="/produits">Voir tous les produits</Link>
                 </Button>
               </CardFooter>
+            </Card>
+          </div>
+          {/* Produits proches péremption */}
+          <div className="mt-8">
+            <Card className={produitsProchesPeremption.length > 0 ? "border-red-500/50" : ""}>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Clock className={`h-5 w-5 ${produitsProchesPeremption.length > 0 ? "text-red-500 animate-pulse" : "text-muted-foreground"}`} />
+                  <CardTitle>Alertes de péremption</CardTitle>
+                  {produitsProchesPeremption.length > 0 ? (
+                    <Badge variant="destructive" className="ml-auto">
+                      {produitsProchesPeremption.length} lot{produitsProchesPeremption.length > 1 ? "s" : ""} à risque
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="ml-auto text-green-600 border-green-300 bg-green-50">
+                      Tout est bon
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription>Lots dont la date de péremption est dans moins de 30 jours</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {produitsProchesPeremption.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                    <Clock className="h-10 w-10 mb-3 text-green-400" />
+                    <p className="font-medium text-green-700">Aucun produit proche de la péremption</p>
+                    <p className="text-xs mt-1">Les lots dont la date de péremption est renseignée apparaîtront ici</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm font-semibold text-red-800">
+                          Ces produits doivent être écoulés ou retirés rapidement avant leur date de péremption.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-muted-foreground">
+                            <th className="text-left py-2 pr-4 font-medium">Produit</th>
+                            <th className="text-center py-2 px-4 font-medium">Qté restante</th>
+                            <th className="text-center py-2 px-4 font-medium">Date péremption</th>
+                            <th className="text-center py-2 px-4 font-medium">Jours restants</th>
+                            <th className="text-left py-2 px-4 font-medium">Fournisseur</th>
+                            <th className="text-right py-2 font-medium">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {produitsProchesPeremption.map((p, i) => (
+                            <tr key={i} className="border-b last:border-0 hover:bg-muted/50">
+                              <td className="py-3 pr-4 font-medium">{p.libelle}</td>
+                              <td className="py-3 px-4 text-center">
+                                <Badge variant="outline">{p.quantite}</Badge>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                {format(new Date(p.datePeremption), "dd MMM yyyy", { locale: fr })}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <Badge variant={p.joursRestants <= 7 ? "destructive" : p.joursRestants <= 15 ? "secondary" : "outline"}>
+                                  {p.joursRestants}j
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4 text-muted-foreground">{p.fournisseur ?? "—"}</td>
+                              <td className="py-3 text-right">
+                                <Button asChild size="sm" variant="ghost">
+                                  <Link href={`/produits/${p.produitId}`}>
+                                    <Eye className="mr-1 h-4 w-4" />
+                                    Voir
+                                  </Link>
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </CardContent>
             </Card>
           </div>
         </div>

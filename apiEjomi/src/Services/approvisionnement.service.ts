@@ -95,7 +95,7 @@ const createApprovisionnement = async (data: ApprovisionnementCreateData & { ent
         where: { produitId: ligne.produitId },
       });
 
-      await tx.ligneApprovisionnement.create({
+      const ligneCreee = await tx.ligneApprovisionnement.create({
         data: {
           approvisionnementId: approvisionnement.id,
           produitId: ligne.produitId,
@@ -105,6 +105,17 @@ const createApprovisionnement = async (data: ApprovisionnementCreateData & { ent
           montant: ligne.montant,
           dateFabrication: ligne.dateFabrication || null,
           datePeremption: ligne.datePeremption || null,
+        },
+      });
+
+      // FIFO : créer un lot pour traçer le coût par unité
+      await tx.lotStock.create({
+        data: {
+          produitId: ligne.produitId,
+          quantiteInitiale: ligne.quantite,
+          quantiteRestante: ligne.quantite,
+          prixAchat: ligne.prixUnitaire,
+          ligneApprovisionnementId: ligneCreee.id,
         },
       });
 
@@ -137,7 +148,7 @@ const updateApprovisionnement = async (id: number, data: ApprovisionnementUpdate
       throw new Error('Approvisionnement introuvable pour la mise à jour.');
     }
 
-    // 2. Restaurer le stock magasin des anciennes lignes
+    // 2. Restaurer le stock magasin des anciennes lignes et supprimer les lots associés
     for (const ligne of ancienAppro.lignes) {
       if (ligne.stockMagasinId) {
         await tx.stockMagasin.update({
@@ -145,6 +156,8 @@ const updateApprovisionnement = async (id: number, data: ApprovisionnementUpdate
           data: { quantite: { decrement: ligne.quantite } },
         });
       }
+      // Supprimer le lot FIFO lié à cette ligne
+      await tx.lotStock.deleteMany({ where: { ligneApprovisionnementId: ligne.id } });
     }
 
     const updateData: any = {};
@@ -179,7 +192,7 @@ const updateApprovisionnement = async (id: number, data: ApprovisionnementUpdate
           where: { produitId: ligne.produitId },
         });
 
-        await tx.ligneApprovisionnement.create({
+        const nouvelleLigne = await tx.ligneApprovisionnement.create({
           data: {
             approvisionnementId: id,
             produitId: ligne.produitId,
@@ -188,7 +201,18 @@ const updateApprovisionnement = async (id: number, data: ApprovisionnementUpdate
             prixUnitaire: ligne.prixUnitaire,
             montant: ligne.montant,
             dateFabrication: ligne.dateFabrication || null,
-          datePeremption: ligne.datePeremption || null,
+            datePeremption: ligne.datePeremption || null,
+          },
+        });
+
+        // FIFO : créer un nouveau lot pour les nouvelles lignes
+        await tx.lotStock.create({
+          data: {
+            produitId: ligne.produitId,
+            quantiteInitiale: ligne.quantite,
+            quantiteRestante: ligne.quantite,
+            prixAchat: ligne.prixUnitaire,
+            ligneApprovisionnementId: nouvelleLigne.id,
           },
         });
 
@@ -232,6 +256,10 @@ const deleteApprovisionnement = async (id: number) => {
     }
 
     await tx.transaction.deleteMany({ where: { approvisionnementId: id } });
+    // Supprimer les lots FIFO liés à cet approvisionnement
+    await tx.lotStock.deleteMany({
+      where: { ligneApprovisionnement: { approvisionnementId: id } },
+    });
     await tx.ligneApprovisionnement.deleteMany({ where: { approvisionnementId: id } });
 
     return tx.approvisionnement.delete({ where: { id } });
@@ -278,21 +306,15 @@ const getApprovisionnementsByEmploye = async (employeId: number, page: number = 
   return { data, total, page, totalPages: Math.ceil(total / limit) };
 };
 
-const getApprovisionnementStatistics = async () => {
+const getApprovisionnementStatistics = async (entrepriseId?: number) => {
+  const w = entrepriseId ? { entrepriseId } : {};
+
   const [total, totalMontant, averageMontant, topFournisseurs, topEmployes] = await Promise.all([
-    prisma.approvisionnement.count(),
-    prisma.approvisionnement.aggregate({ _sum: { montant: true } }),
-    prisma.approvisionnement.aggregate({ _avg: { montant: true } }),
-    prisma.approvisionnement.groupBy({
-      by: ['fournisseurId'],
-      _count: { id: true },
-      _sum: { montant: true },
-    }),
-    prisma.approvisionnement.groupBy({
-      by: ['employeId'],
-      _count: { id: true },
-      _sum: { montant: true },
-    }),
+    prisma.approvisionnement.count({ where: w }),
+    prisma.approvisionnement.aggregate({ where: w, _sum: { montant: true } }),
+    prisma.approvisionnement.aggregate({ where: w, _avg: { montant: true } }),
+    prisma.approvisionnement.groupBy({ by: ['fournisseurId'], where: w, _count: { id: true }, _sum: { montant: true } }),
+    prisma.approvisionnement.groupBy({ by: ['employeId'], where: w, _count: { id: true }, _sum: { montant: true } }),
   ]);
 
   return {

@@ -72,7 +72,11 @@ export default function CartPage() {
                         <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                           <Image
                             src={
-                              (item.product as any)?.image ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${(item.product as any).image}` : "/placeholder.svg?height=96&width=96"
+                              (item.product as any)?.image
+                                ? ((item.product as any).image.startsWith("http")
+                                    ? (item.product as any).image
+                                    : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${(item.product as any).image}`)
+                                : "/placeholder.svg?height=96&width=96"
                             }
                             alt={(item.product as any)?.libelle || 'Produit'}
                             fill

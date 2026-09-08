@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { jwtDecode, type JwtPayload } from "jwt-decode"
 import { authService } from "@/services"
 import apiClient from "@/services/api-client"
+import { entrepriseService } from "@/services/entreprise-service"
 
 export interface User {
   id: number
@@ -14,6 +15,7 @@ export interface User {
   adresse?: string
   tel?: string
   image?: string | null
+  entrepriseId?: number
   role?: {
     id?: number
     name?: string
@@ -22,6 +24,15 @@ export interface User {
   employe?: {
     id?: number
   }
+}
+
+export interface Entreprise {
+  id: number
+  nom: string
+  logo?: string | null
+  adresse?: string | null
+  tel?: string | null
+  email?: string | null
 }
 
 interface UserJwtPayload extends JwtPayload {
@@ -33,8 +44,9 @@ interface UserJwtPayload extends JwtPayload {
 
 interface AuthContextType {
   user: User | null
+  entreprise: Entreprise | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, entrepriseId?: number) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
   isAuthenticated: boolean
@@ -44,8 +56,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [entreprise, setEntreprise] = useState<Entreprise | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  const loadEntreprise = useCallback(async (entrepriseId: number) => {
+    try {
+      const res = await entrepriseService.getById(entrepriseId)
+      const data = res.data?.data || res.data
+      setEntreprise({ id: data.id, nom: data.nom, logo: data.logo, adresse: data.adresse, tel: data.tel, email: data.email })
+    } catch {
+      setEntreprise(null)
+    }
+  }, [])
 
   const handleAuthChange = useCallback((token: string | null) => {
     if (token) {
@@ -96,16 +119,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem("token")
     handleAuthChange(token)
-  }, [handleAuthChange])
+    const entrepriseId = localStorage.getItem("entrepriseId")
+    if (entrepriseId) loadEntreprise(parseInt(entrepriseId))
+  }, [handleAuthChange, loadEntreprise])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, entrepriseId?: number) => {
     try {
-      const response = await authService.login({ email, password })
+      const response = await authService.login({ email, password, ...(entrepriseId ? { entrepriseId } : {}) })
       console.log("Response complète:", response)
       console.log("Response.data:", response.data)
 
       // L'API retourne directement {user, token} dans response.data
-      const { token, user: loggedInUser } = response.data
+      const { token, user: loggedInUser } = response.data as { token: string; user: User }
 
       if (!token) {
         throw new Error("Token manquant dans la réponse")
@@ -128,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Stocker entrepriseId
       if (loggedInUser?.entrepriseId) {
         localStorage.setItem("entrepriseId", String(loggedInUser.entrepriseId))
+        loadEntreprise(loggedInUser.entrepriseId)
       }
 
       handleAuthChange(token) // Centralise la logique de mise à jour
@@ -171,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
     localStorage.removeItem("entrepriseId")
+    setEntreprise(null)
     handleAuthChange(null)
     router.push("/auth/login")
   }
@@ -198,12 +225,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     user,
+    entreprise,
     loading,
     isAuthenticated: !!user,
     login,
     logout,
     refreshUser,
-  }), [user, loading]);
+  }), [user, entreprise, loading]);
 
   return (
     <AuthContext.Provider

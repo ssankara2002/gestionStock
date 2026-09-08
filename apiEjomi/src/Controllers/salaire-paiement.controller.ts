@@ -1,9 +1,10 @@
 import { Request, Response } from "express"
 import salairePaiementService from "../Services/salaire-paiement.service"
+import { AuthenticatedRequest } from "../middlewares/authMiddleware"
 
-export const getAllPaiements = async (_req: Request, res: Response): Promise<void> => {
+export const getAllPaiements = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const paiements = await salairePaiementService.getAll()
+    const paiements = await salairePaiementService.getAll((req as any).user?.entrepriseId)
     res.status(200).json({ success: true, data: paiements })
   } catch (error: any) {
     res.status(500).json({ success: false, message: "Erreur serveur", error: error.message })

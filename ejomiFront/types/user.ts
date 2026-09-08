@@ -8,7 +8,7 @@ export interface User {
   prenom: string
   email?: string | null
   adresse?: string
-  tel: string
+  tel?: string | null
   image?: string
   password?: string | null
   roleId?: number
@@ -22,7 +22,7 @@ export interface UserCreateData {
   prenom: string
   email?: string | null
   adresse?: string
-  tel: string
+  tel?: string | null
   password?: string
   roleId?: string
 }

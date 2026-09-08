@@ -14,6 +14,7 @@ export interface Conge {
 }
 
 export interface CongeCreateData {
+  employeId?: number
   type: string
   dateDebut: string
   dateFin: string

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function Header({ showSidebar = false }: { showSidebar?: boolean }) {
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, entreprise, logout, isAuthenticated } = useAuth()
   const { totalItems } = useCart()
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -92,10 +92,22 @@ export function Header({ showSidebar = false }: { showSidebar?: boolean }) {
             <SidebarTrigger className="h-8 w-8" />
           ))}
           <Link href="/" className="flex items-center gap-2">
-            <div className="rounded-full bg-primary p-1.5">
-              <Package className="h-5 w-5 text-white" />
+            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shrink-0">
+              {entreprise?.logo ? (
+                <Image
+                  src={`${baseUrl}/uploads/${entreprise.logo}`}
+                  alt={entreprise.nom}
+                  width={32}
+                  height={32}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <Package className="h-5 w-5 text-white" />
+              )}
             </div>
-            <span className="font-playfair text-xl font-bold text-primary hidden sm:block">GoldTech</span>
+            <span className="font-playfair text-xl font-bold text-primary hidden sm:block">
+              {entreprise?.nom || "GoldTech"}
+            </span>
           </Link>
         </div>
         <div className="flex items-center gap-2">

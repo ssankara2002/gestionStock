@@ -70,11 +70,12 @@ const create = async (data: ApprovisionnementMatierePremiereCreateData) => {
   });
 };
 
-const getAll = async (queryParams: any) => {
+const getAll = async (queryParams: any, entrepriseId?: number) => {
   const { skip, take, page, limit } = getPaginationParams(queryParams);
 
   // Filtrer pour ne voir que les approvisionnements de matières premières
-  const whereClause = { lignes: { some: { matierePremiereId: { not: null } } } };
+  const whereClause: any = { lignes: { some: { matierePremiereId: { not: null } } } };
+  if (entrepriseId) whereClause.entrepriseId = entrepriseId;
 
   const [approvisionnements, total] = await prisma.$transaction([
     prisma.approvisionnement.findMany({

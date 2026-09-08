@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import absenceService from '../Services/absence.service';
 import { log } from 'node:console';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
-export const getAllAbsences = async (req: Request, res: Response): Promise<void> => {
+export const getAllAbsences = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const result = await absenceService.getAllAbsences(req.query);
+    const result = await absenceService.getAllAbsences(req.query, req.user?.entrepriseId);
     res.status(200).json({ success: true, ...result });
   } catch (error: any) {
 console.log(error);
@@ -26,6 +27,7 @@ export const getAbsenceById = async (req: Request, res: Response): Promise<void>
   } catch (error: any) {
     res.status(500).json({ success: false, message: "Erreur lors de la récupération de l'absence", error: error.message });
   }
+  
 };
 
 export const createAbsence = async (req: Request, res: Response): Promise<void> => {
@@ -35,15 +37,15 @@ export const createAbsence = async (req: Request, res: Response): Promise<void> 
 
     const { employeId, date, motif } = req.body;
 
-    if (!employeId || !date || !motif) {
-      res.status(400).json({ success: false, message: 'Les champs employeId, date et motif sont obligatoires' });
+    if (!employeId || !date) {
+      res.status(400).json({ success: false, message: 'Les champs employeId et date sont obligatoires' });
       return;
     }
 
     const absenceData = {
       employeId: parseInt(employeId),
       date: new Date(date),
-      motif,
+      motif: motif || '',
     };
 
     const absence = await absenceService.createAbsence(absenceData);
@@ -123,9 +125,9 @@ export const getAbsencesByDateRange = async (req: Request, res: Response): Promi
   }
 };
 
-export const getAbsenceStatistics = async (req: Request, res: Response): Promise<void> => {
+export const getAbsenceStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await absenceService.getAbsenceStatistics();
+    const stats = await absenceService.getAbsenceStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la récupération des statistiques', error: error.message });

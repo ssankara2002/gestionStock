@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import paiementService from '../Services/paiement.service';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
-export const getAllPaiements = async (_req: Request, res: Response): Promise<void> => {
+export const getAllPaiements = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const data = await paiementService.getAllPaiements();
+    const data = await paiementService.getAllPaiements(req.user?.entrepriseId);
     res.status(200).json({ success: true, data });
   } catch (error: any) {
     console.error('Erreur getAllPaiements', error);
@@ -136,9 +136,9 @@ export const downloadRecuPaiement = async (req: Request, res: Response): Promise
   }
 };
 
-export const getPaiementStatistics = async (_req: Request, res: Response): Promise<void> => {
+export const getPaiementStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const data = await paiementService.getPaiementStatistics();
+    const data = await paiementService.getPaiementStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data });
   } catch (error: any) {
     console.error('Erreur getPaiementStatistics', error);

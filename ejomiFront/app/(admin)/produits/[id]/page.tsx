@@ -70,7 +70,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:3000"
-  const imageUrl = product.image ? `${baseUrl}/uploads/${product.image}` : "/placeholder.svg?height=400&width=400"
+  const imageUrl = product.image
+    ? (product.image.startsWith("http") ? product.image : `${baseUrl}/uploads/${product.image}`)
+    : "/placeholder.svg?height=400&width=400"
 
   const stockMagasinQte = product.stockMagasin?.quantite ?? 0
   const stockMagasinSeuil = product.stockMagasin?.seuilAlerte ?? 0

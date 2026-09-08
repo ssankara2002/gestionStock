@@ -126,9 +126,9 @@ export const searchFournisseurs = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const getFournisseurStatistics = async (_req: Request, res: Response): Promise<void> => {
+export const getFournisseurStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await fournisseurService.getFournisseurStatistics();
+    const stats = await fournisseurService.getFournisseurStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la r�cup�ration des statistiques', error: error.message });

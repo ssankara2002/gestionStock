@@ -18,8 +18,9 @@ interface LivraisonUpdateData {
   livreurId?: number;
 }
 
-const getAllLivraisons = async () => {
+const getAllLivraisons = async (entrepriseId?: number) => {
   return await prisma.livraison.findMany({
+    where: entrepriseId ? { commande: { entrepriseId } } : {},
     include: {
       commande: {
         include: {
@@ -204,24 +205,21 @@ const getLivraisonsByStatut = async (statut: string) => {
   });
 };
 
-const getLivraisonStatistics = async () => {
+const getLivraisonStatistics = async (entrepriseId?: number) => {
+  let commandeIds: number[] | undefined;
+  if (entrepriseId) {
+    const cmds = await prisma.commande.findMany({ where: { entrepriseId }, select: { id: true } });
+    commandeIds = cmds.map(c => c.id);
+  }
+  const w = commandeIds ? { commandeId: { in: commandeIds } } : {};
+
   const [total, byStatut, byLivreur] = await Promise.all([
-    prisma.livraison.count(),
-    prisma.livraison.groupBy({
-      by: ['statut'],
-      _count: { id: true },
-    }),
-    prisma.livraison.groupBy({
-      by: ['livreurId'],
-      _count: { id: true },
-    }),
+    prisma.livraison.count({ where: w }),
+    prisma.livraison.groupBy({ by: ['statut'], where: w, _count: { id: true } }),
+    prisma.livraison.groupBy({ by: ['livreurId'], where: w, _count: { id: true } }),
   ]);
 
-  return {
-    total,
-    byStatut,
-    byLivreur,
-  };
+  return { total, byStatut, byLivreur };
 };
 
 export default {

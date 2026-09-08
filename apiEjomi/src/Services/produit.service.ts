@@ -38,9 +38,9 @@ const getAllProduits = async (entrepriseId?: number) => {
   });
 };
 
-const getProduitById = async (id: number) => {
-  return prisma.produit.findUnique({
-    where: { id },
+const getProduitById = async (id: number, entrepriseId?: number) => {
+  return prisma.produit.findFirst({
+    where: { id, ...(entrepriseId ? { entrepriseId } : {}) },
     include: {
       stockMagasin: true,
       stockBoutique: true,
@@ -146,15 +146,16 @@ const deleteProduit = async (id: number) => {
   });
 };
 
-const getLowStockProduits = async (seuil = 10) => {
+const getLowStockProduits = async (seuil = 10, entrepriseId?: number) => {
+  const produitWhere = entrepriseId ? { produit: { entrepriseId } } : {};
   const [magasin, boutique] = await Promise.all([
     prisma.stockMagasin.findMany({
-      where: { quantite: { lte: seuil } },
+      where: { quantite: { lte: seuil }, ...produitWhere },
       include: { produit: true },
       orderBy: { quantite: 'asc' },
     }),
     prisma.stockBoutique.findMany({
-      where: { quantite: { lte: seuil } },
+      where: { quantite: { lte: seuil }, ...produitWhere },
       include: { produit: true },
       orderBy: { quantite: 'asc' },
     }),
@@ -162,9 +163,10 @@ const getLowStockProduits = async (seuil = 10) => {
   return { magasin, boutique };
 };
 
-const searchProduits = async (query: string) => {
+const searchProduits = async (query: string, entrepriseId?: number) => {
   return prisma.produit.findMany({
     where: {
+      ...(entrepriseId ? { entrepriseId } : {}),
       OR: [
         { libelle: { contains: query, mode: 'insensitive' } },
         { description: { contains: query, mode: 'insensitive' } },
@@ -175,13 +177,16 @@ const searchProduits = async (query: string) => {
   });
 };
 
-const getProduitStatistics = async () => {
+const getProduitStatistics = async (entrepriseId?: number) => {
+  const produitWhere = entrepriseId ? { entrepriseId } : {};
+  const stockWhere = entrepriseId ? { produit: { entrepriseId } } : {};
+
   const [total, stockMagasinAgg, stockBoutiqueAgg, lowStockMagasin, lowStockBoutique] = await Promise.all([
-    prisma.produit.count(),
-    prisma.stockMagasin.aggregate({ _sum: { quantite: true } }),
-    prisma.stockBoutique.aggregate({ _sum: { quantite: true } }),
-    prisma.stockMagasin.count({ where: { quantite: { lte: 10 } } }),
-    prisma.stockBoutique.count({ where: { quantite: { lte: 5 } } }),
+    prisma.produit.count({ where: produitWhere }),
+    prisma.stockMagasin.aggregate({ where: stockWhere, _sum: { quantite: true } }),
+    prisma.stockBoutique.aggregate({ where: stockWhere, _sum: { quantite: true } }),
+    prisma.stockMagasin.count({ where: { quantite: { lte: 10 }, ...stockWhere } }),
+    prisma.stockBoutique.count({ where: { quantite: { lte: 5 }, ...stockWhere } }),
   ]);
 
   // Top 5 produits les plus vendus
@@ -190,10 +195,11 @@ const getProduitStatistics = async () => {
     _sum: { quantiteCommande: true },
     orderBy: { _sum: { quantiteCommande: 'desc' } },
     take: 5,
+    ...(entrepriseId ? { where: { produit: { entrepriseId } } } : {}),
   });
 
   const produitsTop = await prisma.produit.findMany({
-    where: { id: { in: topVentes.map((t) => t.produitId) } },
+    where: { id: { in: topVentes.map((t) => t.produitId) }, ...produitWhere },
     include: { stockMagasin: true, stockBoutique: true },
   });
 
@@ -210,7 +216,7 @@ const getProduitStatistics = async () => {
 
   const [produitsStockFaibleBoutique, produitsStockFaibleMagasin] = await Promise.all([
     prisma.stockBoutique.findMany({
-      where: { quantite: { lte: 5 } },
+      where: { quantite: { lte: 5 }, ...stockWhere },
       include: {
         produit: {
           select: {
@@ -222,7 +228,7 @@ const getProduitStatistics = async () => {
       orderBy: { quantite: 'asc' },
     }),
     prisma.stockMagasin.findMany({
-      where: { quantite: { lte: 5 } },
+      where: { quantite: { lte: 5 }, ...stockWhere },
       include: {
         produit: {
           select: {
@@ -247,6 +253,40 @@ const getProduitStatistics = async () => {
   };
 };
 
+const getProduitsProchesPeremption = async (entrepriseId?: number, joursAvantPeremption = 30) => {
+  const now = new Date();
+  const limite = new Date();
+  limite.setDate(now.getDate() + joursAvantPeremption);
+
+  const lignes = await prisma.ligneApprovisionnement.findMany({
+    where: {
+      datePeremption: { gte: now, lte: limite },
+      produitId: { not: null },
+      ...(entrepriseId ? { produit: { entrepriseId } } : {}),
+    },
+    include: {
+      produit: {
+        select: { id: true, libelle: true, image: true, prixDeVenteUnitaire: true, stockBoutique: true, stockMagasin: true },
+      },
+      approvisionnement: { select: { dateApprovisionnement: true, fournisseur: { select: { nom: true } } } },
+    },
+    orderBy: { datePeremption: 'asc' },
+  });
+
+  return lignes.map(l => ({
+    produitId: l.produitId,
+    libelle: l.produit?.libelle ?? '',
+    image: l.produit?.image ?? null,
+    prixDeVenteUnitaire: l.produit?.prixDeVenteUnitaire ?? 0,
+    stockBoutique: l.produit?.stockBoutique?.quantite ?? 0,
+    stockMagasin: l.produit?.stockMagasin?.quantite ?? 0,
+    quantite: l.quantite,
+    datePeremption: l.datePeremption,
+    joursRestants: Math.ceil((l.datePeremption!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+    fournisseur: l.approvisionnement?.fournisseur?.nom ?? null,
+  }));
+};
+
 export default {
   getAllProduits,
   getProduitById,
@@ -256,4 +296,5 @@ export default {
   getLowStockProduits,
   searchProduits,
   getProduitStatistics,
+  getProduitsProchesPeremption,
 };

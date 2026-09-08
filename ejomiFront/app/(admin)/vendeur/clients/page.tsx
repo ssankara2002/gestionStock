@@ -32,11 +32,9 @@ export default function ClientsPage() {
       const payload = response.data
       return Array.isArray(payload) ? payload : (payload?.data || [])
     },
-    staleTime: 0,
   })
 
-  const allUsers: Client[] = data || []
-  const clients = allUsers.filter((user: Client) => user.role?.name === 'CLIENT' || !user.role)
+  const clients: Client[] = data || []
 
   const filteredClients = clients.filter((client) =>
     (client.nom || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

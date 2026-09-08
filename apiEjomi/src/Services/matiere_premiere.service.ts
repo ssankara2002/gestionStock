@@ -19,19 +19,21 @@ interface MatierePremiereUpdateData {
   prixAchat?: number;
 }
 
-const getAllMatieresPremieres = async (queryParams: any) => {
+const getAllMatieresPremieres = async (queryParams: any, entrepriseId?: number) => {
   const { skip, take, page, limit } = getPaginationParams(queryParams);
+  const where = entrepriseId ? { entrepriseId } : {};
 
   const [matieres, total] = await prisma.$transaction([
     prisma.matierePremiere.findMany({
+      where,
       skip,
       take,
       include: {
         consommations: true,
       },
-      orderBy: { nom: 'asc' },
+      orderBy: { updatedAt: 'desc' },
     }),
-    prisma.matierePremiere.count(),
+    prisma.matierePremiere.count({ where }),
   ]);
 
   return createPaginationResult(matieres, total, page, limit);
@@ -137,20 +139,14 @@ const searchMatieresPremieres = async (query: string) => {
   });
 };
 
-const getMatierePremiereStatistics = async () => {
+const getMatierePremiereStatistics = async (entrepriseId?: number) => {
+  const w = entrepriseId ? { entrepriseId } : {};
+
   const [total, totalStock, lowStock, categories] = await Promise.all([
-    prisma.matierePremiere.count(),
-    prisma.matierePremiere.aggregate({
-      _sum: { quantiteStock: true },
-    }),
-    prisma.matierePremiere.count({
-      where: { quantiteStock: { lte: 10 } },
-    }),
-    prisma.matierePremiere.groupBy({
-      by: ['categorie'],
-      _count: { id: true },
-      _sum: { quantiteStock: true },
-    }),
+    prisma.matierePremiere.count({ where: w }),
+    prisma.matierePremiere.aggregate({ where: w, _sum: { quantiteStock: true } }),
+    prisma.matierePremiere.count({ where: { ...w, quantiteStock: { lte: 10 } } }),
+    prisma.matierePremiere.groupBy({ by: ['categorie'], where: w, _count: { id: true }, _sum: { quantiteStock: true } }),
   ]);
 
   return {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, ArrowLeft, Plus, PackageCheck } from "lucide-react"
+import { ArrowRight, ArrowLeft, Plus, PackageCheck, Trash2 } from "lucide-react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +26,10 @@ import { produitService } from "@/services/produit-service"
 import type { SensTransfert } from "@/types/transfert"
 import { DataPagination } from "@/components/shared/data-pagination"
 
+type Ligne = { produitId: string; quantite: string }
+
+const ligneVide = (): Ligne => ({ produitId: "", quantite: "" })
+
 export default function TransfertsPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -33,12 +37,20 @@ export default function TransfertsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  const [form, setForm] = useState({
-    produitId: "",
-    quantite: "",
-    sens: "MAGASIN_VERS_BOUTIQUE" as SensTransfert,
-    motif: "",
-  })
+  const [sens, setSens] = useState<SensTransfert>("MAGASIN_VERS_BOUTIQUE")
+  const [motif, setMotif] = useState("")
+  const [lignes, setLignes] = useState<Ligne[]>([ligneVide()])
+
+  const ajouterLigne = () => setLignes(l => [...l, ligneVide()])
+  const supprimerLigne = (i: number) => setLignes(l => l.filter((_, idx) => idx !== i))
+  const modifierLigne = (i: number, champ: keyof Ligne, valeur: string) =>
+    setLignes(l => l.map((ligne, idx) => idx === i ? { ...ligne, [champ]: valeur } : ligne))
+
+  const resetForm = () => {
+    setSens("MAGASIN_VERS_BOUTIQUE")
+    setMotif("")
+    setLignes([ligneVide()])
+  }
 
   // Charger les transferts
   const { data: transfertsData, isLoading } = useQuery({
@@ -54,27 +66,29 @@ export default function TransfertsPage() {
     queryKey: ["produits"],
     queryFn: async () => {
       const res = await produitService.getAll()
-      return res.data.data
+      const payload = res.data
+      return Array.isArray(payload) ? payload : (payload as any)?.data || []
     },
   })
 
-  const produitSelectionne = produits.find((p: any) => p.id === parseInt(form.produitId))
+  // Ids déjà sélectionnés (pour éviter doublons)
+  const idsSelectionnes = lignes.map(l => l.produitId).filter(Boolean)
 
-  // Mutation création
+  // Mutation création bulk
   const mutation = useMutation({
     mutationFn: () =>
-      transfertService.create({
-        produitId: parseInt(form.produitId),
-        quantite: parseInt(form.quantite),
-        sens: form.sens,
-        motif: form.motif || undefined,
+      transfertService.createBulk({
+        lignes: lignes.map(l => ({ produitId: parseInt(l.produitId), quantite: parseInt(l.quantite) })),
+        sens,
+        motif: motif || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["transferts"] })
       queryClient.invalidateQueries({ queryKey: ["produits"] })
-      toast({ title: "Transfert effectué", description: "Le stock a été transféré avec succès." })
+      const n = res.data?.data?.length ?? lignes.length
+      toast({ title: "Transfert effectué", description: `${n} produit(s) transféré(s) avec succès.` })
       setOpen(false)
-      setForm({ produitId: "", quantite: "", sens: "MAGASIN_VERS_BOUTIQUE", motif: "" })
+      resetForm()
     },
     onError: (error: any) => {
       toast({
@@ -86,13 +100,16 @@ export default function TransfertsPage() {
   })
 
   const handleSubmit = () => {
-    if (!form.produitId || !form.quantite) {
-      toast({ title: "Champs requis", description: "Sélectionnez un produit et une quantité.", variant: "destructive" })
-      return
-    }
-    if (parseInt(form.quantite) <= 0) {
-      toast({ title: "Quantité invalide", description: "La quantité doit être supérieure à 0.", variant: "destructive" })
-      return
+    for (let i = 0; i < lignes.length; i++) {
+      const l = lignes[i]
+      if (!l.produitId) {
+        toast({ title: "Champ requis", description: `Sélectionnez un produit pour la ligne ${i + 1}.`, variant: "destructive" })
+        return
+      }
+      if (!l.quantite || parseInt(l.quantite) <= 0) {
+        toast({ title: "Quantité invalide", description: `La quantité de la ligne ${i + 1} doit être > 0.`, variant: "destructive" })
+        return
+      }
     }
     mutation.mutate()
   }
@@ -117,31 +134,31 @@ export default function TransfertsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Transferts de stock</h1>
           <p className="text-muted-foreground text-sm mt-1">Déplacer du stock entre le magasin et la boutique</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
           <DialogTrigger asChild>
             <Button className="btn-gold">
               <Plus className="mr-2 h-4 w-4" />
               Nouveau transfert
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nouveau transfert de stock</DialogTitle>
               <DialogDescription>
-                Transférez un produit entre le magasin et la boutique.
+                Transférez un ou plusieurs produits entre le magasin et la boutique.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
+            <div className="space-y-5 py-2">
               {/* Sens */}
               <div className="space-y-2">
                 <Label>Direction du transfert</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, sens: "MAGASIN_VERS_BOUTIQUE" }))}
+                    onClick={() => setSens("MAGASIN_VERS_BOUTIQUE")}
                     className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-sm transition-colors ${
-                      form.sens === "MAGASIN_VERS_BOUTIQUE"
+                      sens === "MAGASIN_VERS_BOUTIQUE"
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border hover:bg-muted"
                     }`}
@@ -155,9 +172,9 @@ export default function TransfertsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, sens: "BOUTIQUE_VERS_MAGASIN" }))}
+                    onClick={() => setSens("BOUTIQUE_VERS_MAGASIN")}
                     className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-sm transition-colors ${
-                      form.sens === "BOUTIQUE_VERS_MAGASIN"
+                      sens === "BOUTIQUE_VERS_MAGASIN"
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border hover:bg-muted"
                     }`}
@@ -172,42 +189,59 @@ export default function TransfertsPage() {
                 </div>
               </div>
 
-              {/* Produit */}
-              <div className="space-y-2">
-                <Label>Produit</Label>
-                <AppSelect
-                  placeholder="Sélectionner un produit..."
-                  value={form.produitId ? { value: form.produitId, label: (produits as any[]).find((p: any) => String(p.id) === form.produitId)?.libelle ?? "" } : null}
-                  onChange={(opt: any) => setForm(f => ({ ...f, produitId: opt?.value ?? "" }))}
-                  options={(produits as any[]).map((p: any) => ({ value: String(p.id), label: p.libelle }))}
-                />
+              {/* Lignes de produits */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Produits à transférer</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={ajouterLigne}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Ajouter un produit
+                  </Button>
+                </div>
 
-                {/* Aperçu du stock disponible */}
-                {produitSelectionne && (
-                  <div className="flex gap-3 rounded-md bg-muted px-3 py-2 text-sm">
-                    <span>
-                      Magasin :{" "}
-                      <strong>{produitSelectionne.stockMagasin?.quantite ?? 0}</strong>
-                    </span>
-                    <span className="text-muted-foreground">|</span>
-                    <span>
-                      Boutique :{" "}
-                      <strong>{produitSelectionne.stockBoutique?.quantite ?? 0}</strong>
-                    </span>
-                  </div>
-                )}
-              </div>
+                <div className="space-y-2">
+                  {lignes.map((ligne, i) => {
+                    const produitSelectionne = (produits as any[]).find((p: any) => String(p.id) === ligne.produitId)
+                    const optionsDispo = (produits as any[])
+                      .filter((p: any) => !idsSelectionnes.includes(String(p.id)) || String(p.id) === ligne.produitId)
+                      .map((p: any) => ({ value: String(p.id), label: p.libelle }))
 
-              {/* Quantité */}
-              <div className="space-y-2">
-                <Label>Quantité à transférer</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder="Ex: 10"
-                  value={form.quantite}
-                  onChange={(e) => setForm(f => ({ ...f, quantite: e.target.value }))}
-                />
+                    return (
+                      <div key={i} className="rounded-lg border p-3 space-y-2 bg-muted/30">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-muted-foreground">Produit {i + 1}</span>
+                          {lignes.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => supprimerLigne(i)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-[1fr_120px] gap-2">
+                          <AppSelect
+                            placeholder="Sélectionner un produit..."
+                            value={ligne.produitId ? { value: ligne.produitId, label: produitSelectionne?.libelle ?? "" } : null}
+                            onChange={(opt: any) => modifierLigne(i, "produitId", opt?.value ?? "")}
+                            options={optionsDispo}
+                          />
+                          <Input
+                            type="number"
+                            min={1}
+                            placeholder="Qté"
+                            value={ligne.quantite}
+                            onChange={(e) => modifierLigne(i, "quantite", e.target.value)}
+                          />
+                        </div>
+                        {produitSelectionne && (
+                          <div className="flex gap-3 rounded-md bg-background px-3 py-1.5 text-xs border">
+                            <span>Magasin : <strong>{produitSelectionne.stockMagasin?.quantite ?? 0}</strong></span>
+                            <span className="text-muted-foreground">|</span>
+                            <span>Boutique : <strong>{produitSelectionne.stockBoutique?.quantite ?? 0}</strong></span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Motif */}
@@ -215,17 +249,17 @@ export default function TransfertsPage() {
                 <Label>Motif (optionnel)</Label>
                 <Textarea
                   placeholder="Raison du transfert..."
-                  value={form.motif}
-                  onChange={(e) => setForm(f => ({ ...f, motif: e.target.value }))}
+                  value={motif}
+                  onChange={(e) => setMotif(e.target.value)}
                   rows={2}
                 />
               </div>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+              <Button variant="outline" onClick={() => { setOpen(false); resetForm() }}>Annuler</Button>
               <Button onClick={handleSubmit} disabled={mutation.isPending}>
-                {mutation.isPending ? "Transfert en cours..." : "Confirmer le transfert"}
+                {mutation.isPending ? "Transfert en cours..." : `Confirmer (${lignes.length} produit${lignes.length > 1 ? "s" : ""})`}
               </Button>
             </DialogFooter>
           </DialogContent>

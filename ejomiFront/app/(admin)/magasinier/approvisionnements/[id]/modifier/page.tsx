@@ -4,6 +4,8 @@ import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Trash2, Save } from "lucide-react"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,28 +20,44 @@ import { approvisionnementService, produitService, fournisseurService } from "@/
 import type { ApprovisionnementUpdateData, LigneApprovisionnementInput } from "@/types/approvisionnement"
 import type { Produit } from "@/types/produit"
 import type { Fournisseur } from "@/types/fournisseur"
+import { approvisionnementSchema, type ApprovisionnementFormValues } from "@/lib/validations"
 
 export default function ModifierApprovisionnementPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const router = useRouter()
   const { toast } = useToast()
 
-  const [products, setProducts] = useState<Produit[]>([])
-  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
-  const [loading, setLoading] = useState(true)
-
   interface LigneApprovisionnementLocal extends LigneApprovisionnementInput {
     id: string
   }
 
+  const [products, setProducts] = useState<Produit[]>([])
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
+  const [loading, setLoading] = useState(true)
   const [lignesApprovisionnement, setLignesApprovisionnement] = useState<LigneApprovisionnementLocal[]>([])
-  const [fournisseurId, setFournisseurId] = useState<number | undefined>(undefined)
   const [montantTotal, setMontantTotal] = useState(0)
 
   // État pour la sélection de produits
   const [selectedProduitId, setSelectedProduitId] = useState<string>("")
   const [selectedQuantity, setSelectedQuantity] = useState(1)
   const [selectedPrixUnitaire, setSelectedPrixUnitaire] = useState(0)
+  const [selectedDateFabrication, setSelectedDateFabrication] = useState("")
+  const [selectedDatePeremption, setSelectedDatePeremption] = useState("")
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<ApprovisionnementFormValues>({
+    resolver: zodResolver(approvisionnementSchema),
+    defaultValues: {
+      fournisseurId: 0,
+    },
+  })
+
+  const watchedFournisseurId = watch("fournisseurId")
 
   // Charger les données initiales
   useEffect(() => {
@@ -52,21 +70,25 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
         ])
 
         const approData = (approRes.data as any).data || approRes.data
-        const productsData = productsRes.data?.data || (Array.isArray(productsRes.data) ? productsRes.data : []);
-        const fournisseursData = fournisseursRes.data?.data || (Array.isArray(fournisseursRes.data) ? fournisseursRes.data : []);
+        const productsData: any[] = (productsRes as any).data?.data || productsRes.data || []
+        const fournisseursData: any[] = (fournisseursRes as any).data?.data || fournisseursRes.data || []
 
-        setProducts(productsData.filter(p => p && p.id));
-        setFournisseurs(fournisseursData.filter(f => f && f.id));
+        setProducts(productsData.filter((p: any) => p && p.id))
+        setFournisseurs(fournisseursData.filter((f: any) => f && f.id))
 
         // Peupler les champs du formulaire
-        setFournisseurId(approData.fournisseurId)
+        reset({ fournisseurId: approData.fournisseurId })
+
         if (approData.lignes) {
           setLignesApprovisionnement(
             approData.lignes.map((ligne: any) => ({
               id: ligne.id?.toString() || Math.random().toString(36).substring(2, 15),
               produitId: Number(ligne.produitId),
               quantite: ligne.quantite,
+              prixUnitaire: ligne.prixUnitaire ?? (ligne.quantite > 0 ? ligne.montant / ligne.quantite : 0),
               montant: ligne.montant,
+              dateFabrication: ligne.dateFabrication || undefined,
+              datePeremption: ligne.datePeremption || undefined,
             }))
           )
         }
@@ -82,7 +104,7 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
     }
 
     loadData()
-  }, [resolvedParams.id, toast])
+  }, [resolvedParams.id, toast, reset])
 
   // Calculer le montant total
   useEffect(() => {
@@ -114,15 +136,19 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
       id: Math.random().toString(36).substring(2, 15),
       produitId: parseInt(selectedProductId),
       quantite: selectedQuantity,
+      prixUnitaire: selectedPrixUnitaire,
       montant: selectedQuantity * selectedPrixUnitaire,
+      dateFabrication: selectedDateFabrication || undefined,
+      datePeremption: selectedDatePeremption || undefined,
     }
 
     setLignesApprovisionnement((prevLignes) => [...prevLignes, nouvelleLigne])
 
-    // Réinitialiser les champs
     setSelectedQuantity(1)
     setSelectedPrixUnitaire(0)
     setSelectedProduitId("")
+    setSelectedDateFabrication("")
+    setSelectedDatePeremption("")
 
     toast({
       title: "Produit ajouté",
@@ -147,8 +173,7 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
     setLignesApprovisionnement((prevLignes) =>
       prevLignes.map((ligne) => {
         if (ligne.id === ligneId) {
-          const prixUnitaire = ligne.montant / ligne.quantite
-          return { ...ligne, quantite, montant: quantite * prixUnitaire }
+          return { ...ligne, quantite, montant: quantite * ligne.prixUnitaire }
         }
         return ligne
       })
@@ -162,7 +187,7 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
     setLignesApprovisionnement((prevLignes) =>
       prevLignes.map((ligne) => {
         if (ligne.id === ligneId) {
-          return { ...ligne, montant: ligne.quantite * prixUnitaire }
+          return { ...ligne, prixUnitaire, montant: ligne.quantite * prixUnitaire }
         }
         return ligne
       })
@@ -170,16 +195,7 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
   }
 
   // Enregistrer les modifications
-  const enregistrerModifications = async () => {
-    if (!fournisseurId) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un fournisseur",
-        variant: "destructive",
-      })
-      return
-    }
-
+  const onSubmit = async (data: ApprovisionnementFormValues) => {
     if (!lignesApprovisionnement.length) {
       toast({
         title: "Erreur",
@@ -191,7 +207,7 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
 
     try {
       const updateData: ApprovisionnementUpdateData = {
-        fournisseurId,
+        fournisseurId: data.fournisseurId,
         lignes: lignesApprovisionnement.map(({ id, ...ligne }) => ligne),
       }
 
@@ -214,6 +230,8 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
       })
     }
   }
+
+  const selectedFournisseur = fournisseurs.find((f) => f.id === watchedFournisseurId)
 
   if (loading) {
     return (
@@ -240,233 +258,269 @@ export default function ModifierApprovisionnementPage({ params }: { params: Prom
             Modifier l'approvisionnement #{resolvedParams.id}
           </h1>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-8">
-              {/* Informations de l'approvisionnement */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informations de l'approvisionnement</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fournisseur">Fournisseur</Label>
-                    <SearchableSelect
-                      options={fournisseurs.filter(f => f && f.id).map((f) => ({
-                        value: f.id.toString(),
-                        label: `${f.prenom} ${f.nom}`,
-                        description: `${f.tel}${f.email ? ' - ' + f.email : ''}`,
-                      }))}
-                      value={fournisseurId?.toString()}
-                      onValueChange={(value) => setFournisseurId(parseInt(value))}
-                      placeholder="Sélectionner un fournisseur"
-                      searchPlaceholder="Rechercher un fournisseur..."
-                      emptyMessage="Aucun fournisseur trouvé"
-                      className="w-full"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Ajouter des produits */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ajouter des produits</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <Label htmlFor="produit">Produit</Label>
-                      <SearchableSelect
-                        options={products.map((p) => ({
-                          value: p.id.toString(),
-                          label: p.libelle,
-                          description: `Stock: ${p.quantiteStock} - ${p.prixDeVenteUnitaire} FCFA`,
-                        }))}
-                        value={selectedProduitId}
-                        onValueChange={setSelectedProduitId}
-                        placeholder="Sélectionner un produit"
-                        searchPlaceholder="Rechercher un produit..."
-                        emptyMessage="Aucun produit trouvé"
-                        className="w-full mt-1"
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-8">
+                {/* Informations de l'approvisionnement */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informations de l'approvisionnement</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fournisseur">Fournisseur</Label>
+                      <Controller
+                        name="fournisseurId"
+                        control={control}
+                        render={({ field }) => (
+                          <SearchableSelect
+                            options={fournisseurs.filter(f => f && f.id).map((f) => ({
+                              value: f.id.toString(),
+                              label: `${f.prenom} ${f.nom}`,
+                              description: `${f.tel}${f.email ? ' - ' + f.email : ''}`,
+                            }))}
+                            value={field.value ? field.value.toString() : undefined}
+                            onValueChange={(value) => field.onChange(parseInt(value))}
+                            placeholder="Sélectionner un fournisseur"
+                            searchPlaceholder="Rechercher un fournisseur..."
+                            emptyMessage="Aucun fournisseur trouvé"
+                            className="w-full"
+                          />
+                        )}
                       />
+                      {errors.fournisseurId && (
+                        <p className="text-sm text-red-500 mt-1">{errors.fournisseurId.message}</p>
+                      )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  </CardContent>
+                </Card>
+
+                {/* Ajouter des produits */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ajouter des produits</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
                       <div>
-                        <Label>Quantité</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          placeholder="Qté"
-                          value={selectedQuantity}
-                          onChange={(e) => setSelectedQuantity(Number.parseInt(e.target.value) || 1)}
+                        <Label htmlFor="produit">Produit</Label>
+                        <SearchableSelect
+                          options={products.map((p) => ({
+                            value: p.id.toString(),
+                            label: p.libelle,
+                            description: `Stock: ${p.stockBoutique?.quantite ?? 0} - ${p.prixDeVenteUnitaire} FCFA`,
+                          }))}
+                          value={selectedProduitId}
+                          onValueChange={setSelectedProduitId}
+                          placeholder="Sélectionner un produit"
+                          searchPlaceholder="Rechercher un produit..."
+                          emptyMessage="Aucun produit trouvé"
                           className="w-full mt-1"
                         />
                       </div>
-                      <div>
-                        <Label>Prix unitaire (FCFA)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Prix"
-                          value={selectedPrixUnitaire}
-                          onChange={(e) => setSelectedPrixUnitaire(Number.parseFloat(e.target.value) || 0)}
-                          className="w-full mt-1"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label>Quantité</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Qté"
+                            value={selectedQuantity}
+                            onChange={(e) => setSelectedQuantity(Number.parseInt(e.target.value) || 1)}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Prix unitaire (FCFA)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Prix"
+                            value={selectedPrixUnitaire}
+                            onChange={(e) => setSelectedPrixUnitaire(Number.parseFloat(e.target.value) || 0)}
+                            className="w-full mt-1"
+                          />
+                        </div>
                       </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label>Date de fabrication <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+                          <Input
+                            type="date"
+                            value={selectedDateFabrication}
+                            onChange={(e) => setSelectedDateFabrication(e.target.value)}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Date de péremption <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+                          <Input
+                            type="date"
+                            value={selectedDatePeremption}
+                            onChange={(e) => setSelectedDatePeremption(e.target.value)}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (selectedProduitId) ajouterLigne(selectedProduitId)
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ajouter le produit
+                      </Button>
                     </div>
-                    <Button
-                      onClick={() => {
-                        if (selectedProduitId) ajouterLigne(selectedProduitId)
-                      }}
-                      className="w-full sm:w-auto"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ajouter le produit
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Lignes d'approvisionnement */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Détails de l'approvisionnement</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {lignesApprovisionnement.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                      <h3 className="mt-2 text-lg font-medium">Aucun produit ajouté</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Recherchez et ajoutez des produits à votre approvisionnement
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Produit</TableHead>
-                            <TableHead className="text-center">Quantité</TableHead>
-                            <TableHead className="text-right">Prix unitaire</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                            <TableHead className="w-[70px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {lignesApprovisionnement.map((ligne) => {
-                            const product = products.find((p) => p.id === ligne.produitId)
-                            const prixUnitaire = ligne.montant / ligne.quantite
+                {/* Lignes d'approvisionnement */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Détails de l'approvisionnement</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {lignesApprovisionnement.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                        <h3 className="mt-2 text-lg font-medium">Aucun produit ajouté</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Recherchez et ajoutez des produits à votre approvisionnement
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Produit</TableHead>
+                              <TableHead>Date fabrication</TableHead>
+                              <TableHead>Date péremption</TableHead>
+                              <TableHead className="text-center">Quantité</TableHead>
+                              <TableHead className="text-right">Prix unitaire</TableHead>
+                              <TableHead className="text-right">Total</TableHead>
+                              <TableHead className="w-[70px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {lignesApprovisionnement.map((ligne) => {
+                              const product = products.find((p) => p.id === ligne.produitId)
+                              const prixUnitaire = ligne.prixUnitaire ?? (ligne.quantite > 0 ? ligne.montant / ligne.quantite : 0)
 
-                            return (
-                              <TableRow key={ligne.id}>
-                                <TableCell className="font-medium">{product?.libelle || 'Produit introuvable'}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center justify-center">
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-7 w-7 rounded-r-none"
-                                      onClick={() => updateQuantite(ligne.id, ligne.quantite - 1)}
-                                    >
-                                      -
-                                    </Button>
-                                    <div className="flex h-7 w-10 items-center justify-center border-y">
-                                      {ligne.quantite}
+                              return (
+                                <TableRow key={ligne.id}>
+                                  <TableCell className="font-medium">{product?.libelle || 'Produit introuvable'}</TableCell>
+                                  <TableCell className="text-sm">{ligne.dateFabrication || <span className="text-muted-foreground">—</span>}</TableCell>
+                                  <TableCell className="text-sm">{ligne.datePeremption || <span className="text-muted-foreground">—</span>}</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center justify-center">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-r-none"
+                                        onClick={() => updateQuantite(ligne.id, ligne.quantite - 1)}
+                                      >
+                                        -
+                                      </Button>
+                                      <div className="flex h-7 w-10 items-center justify-center border-y">
+                                        {ligne.quantite}
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-l-none"
+                                        onClick={() => updateQuantite(ligne.id, ligne.quantite + 1)}
+                                      >
+                                        +
+                                      </Button>
                                     </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      className="w-24 h-7 text-right ml-auto"
+                                      value={prixUnitaire.toFixed(2)}
+                                      onChange={(e) => updatePrixUnitaire(ligne.id, Number.parseFloat(e.target.value) || 0)}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium">{ligne.montant.toFixed(2)} FCFA</TableCell>
+                                  <TableCell>
                                     <Button
-                                      variant="outline"
+                                      type="button"
+                                      variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 rounded-l-none"
-                                      onClick={() => updateQuantite(ligne.id, ligne.quantite + 1)}
+                                      className="h-7 w-7 text-destructive"
+                                      onClick={() => supprimerLigne(ligne.id)}
                                     >
-                                      +
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Supprimer</span>
                                     </Button>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    className="w-24 h-7 text-right ml-auto"
-                                    value={prixUnitaire.toFixed(2)}
-                                    onChange={(e) => updatePrixUnitaire(ligne.id, Number.parseFloat(e.target.value) || 0)}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right font-medium">{ligne.montant.toFixed(2)} FCFA</TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive"
-                                    onClick={() => supprimerLigne(ligne.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Supprimer</span>
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Récapitulatif */}
+              <div>
+                <Card className="sticky top-8">
+                  <CardHeader>
+                    <CardTitle>Récapitulatif</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Separator />
+
+                    <div className="flex justify-between font-medium text-lg">
+                      <span>Total</span>
+                      <span>{montantTotal.toFixed(2)} FCFA</span>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
 
-            {/* Récapitulatif */}
-            <div>
-              <Card className="sticky top-8">
-                <CardHeader>
-                  <CardTitle>Récapitulatif</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Separator />
-
-                  <div className="flex justify-between font-medium text-lg">
-                    <span>Total</span>
-                    <span>{montantTotal.toFixed(2)} FCFA</span>
-                  </div>
-
-                  <div className="pt-4">
-                    <div className="rounded-lg bg-muted p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">
-                          <p className="font-medium">Fournisseur</p>
-                          <p className="text-muted-foreground">
-                            {fournisseurId
-                              ? (() => {
-                                  const fournisseur = fournisseurs.find((f) => f.id === fournisseurId)
-                                  return fournisseur ? `${fournisseur.prenom} ${fournisseur.nom}`.trim() : "Fournisseur non sélectionné"
-                                })()
-                              : "Fournisseur non sélectionné"}
-                          </p>
-                        </div>
-                        <div className="text-sm text-right">
-                          <p className="font-medium">Nombre de produits</p>
-                          <p className="text-muted-foreground">
-                            {lignesApprovisionnement.reduce((sum, ligne) => sum + ligne.quantite, 0)}
-                          </p>
+                    <div className="pt-4">
+                      <div className="rounded-lg bg-muted p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <p className="font-medium">Fournisseur</p>
+                            <p className="text-muted-foreground">
+                              {selectedFournisseur
+                                ? `${selectedFournisseur.prenom} ${selectedFournisseur.nom}`.trim()
+                                : "Fournisseur non sélectionné"}
+                            </p>
+                          </div>
+                          <div className="text-sm text-right">
+                            <p className="font-medium">Nombre de produits</p>
+                            <p className="text-muted-foreground">
+                              {lignesApprovisionnement.reduce((sum, ligne) => sum + ligne.quantite, 0)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                  <Button onClick={enregistrerModifications} className="w-full" size="lg">
-                    <Save className="mr-2 h-4 w-4" />
-                    Enregistrer les modifications
-                  </Button>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href="/magasinier/approvisionnements">Annuler</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-4">
+                    <Button type="submit" className="w-full" size="lg">
+                      <Save className="mr-2 h-4 w-4" />
+                      Enregistrer les modifications
+                    </Button>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href="/magasinier/approvisionnements">Annuler</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       </main>
       <Footer />

@@ -1,5 +1,18 @@
 import apiClient from "./api-client"
 
+export interface ProduitProchesPeremption {
+  produitId: number | null
+  libelle: string
+  image: string | null
+  prixDeVenteUnitaire: number
+  stockBoutique: number
+  stockMagasin: number
+  quantite: number
+  datePeremption: string
+  joursRestants: number
+  fournisseur: string | null
+}
+
 export interface DashboardStats {
   // Ventes (gardé pour compatibilité)
   sales: {
@@ -51,6 +64,8 @@ export interface DashboardStats {
     amount: number
     status: string
   }>
+  // Produits proches péremption (≤ 30 jours)
+  produitsProchesPeremption: ProduitProchesPeremption[]
   // Produits en rupture
   lowStockProducts: Array<{
     id: number
@@ -112,7 +127,8 @@ class DashboardService {
         transactionsStats,
         absencesStats,
         productionsStats,
-        paiementsStats
+        paiementsStats,
+        peremptionStats,
       ] = await Promise.all([
         apiClient.get("/commandes/statistics"),
         apiClient.get("/produits/statistics"),
@@ -122,7 +138,8 @@ class DashboardService {
         apiClient.get("/transactions/statistics"),
         apiClient.get("/absences/statistics"),
         apiClient.get("/productions/statistics"),
-        apiClient.get("/paiements/statistics")
+        apiClient.get("/paiements/statistics"),
+        apiClient.get("/produits/peremption"),
       ])
 
       // Extraire les données
@@ -135,6 +152,7 @@ class DashboardService {
       const absencesData = absencesStats.data.data || {}
       const productionsData = productionsStats.data.data || {}
       const paiementsData = paiementsStats.data.data || {}
+      const produitsProchesPeremption: ProduitProchesPeremption[] = peremptionStats.data.data || []
 
       // Calculer les statistiques de ventes
       const totalVentes = commandesData.totalMontant || 0
@@ -253,6 +271,7 @@ class DashboardService {
           percentChange: commandesData.percentChange || 0
         },
         recentOrders,
+        produitsProchesPeremption,
         lowStockProducts,
         lowStockMagasinProducts,
         topSellingProducts: finalTopProducts,

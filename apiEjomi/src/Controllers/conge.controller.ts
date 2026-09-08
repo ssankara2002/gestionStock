@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import congeService from '../Services/conge.service';
 import { PrismaClient } from '@prisma/client';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
-export const getAllConges = async (_req: Request, res: Response): Promise<void> => {
+export const getAllConges = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const conges = await congeService.getAllConges();
+    const conges = await congeService.getAllConges(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: conges });
   } catch (error: any) {
     console.error("Erreur lors de la récupération des congés:", error);
@@ -28,21 +29,13 @@ export const getCongeById = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-export const createConge = async (req: Request, res: Response): Promise<void> => {
+export const createConge = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { type, dateDebut, dateFin, statut, description } = req.body;
-    const userId = (req as any).user?.userId;
+    const { employeId: employeIdFromBody, type, dateDebut, dateFin, statut, description } = req.body;
+    const userId = req.user?.userId;
 
     if (!userId) {
       res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
-      return;
-    }
-
-    const prisma = new PrismaClient();
-    const employe = await prisma.employe.findUnique({ where: { userId } });
-
-    if (!employe) {
-      res.status(404).json({ success: false, message: 'Profil employé non trouvé pour cet utilisateur' });
       return;
     }
 
@@ -51,17 +44,29 @@ export const createConge = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Add date validation
     if (new Date(dateDebut) > new Date(dateFin)) {
-      res.status(400).json({
-        success: false,
-        message: 'La date de début ne peut pas être postérieure à la date de fin.',
-      });
+      res.status(400).json({ success: false, message: 'La date de début ne peut pas être postérieure à la date de fin.' });
       return;
     }
 
+    let resolvedEmployeId: number;
+
+    if (employeIdFromBody) {
+      // Gérant créant un congé pour un employé donné
+      resolvedEmployeId = parseInt(employeIdFromBody);
+    } else {
+      // Employé créant son propre congé
+      const prisma = new PrismaClient();
+      const employe = await prisma.employe.findUnique({ where: { userId } });
+      if (!employe) {
+        res.status(404).json({ success: false, message: 'Profil employé non trouvé pour cet utilisateur' });
+        return;
+      }
+      resolvedEmployeId = employe.id;
+    }
+
     const congeData = {
-      employeId: employe.id,
+      employeId: resolvedEmployeId,
       type,
       dateDebut: new Date(dateDebut),
       dateFin: new Date(dateFin),
@@ -183,9 +188,9 @@ export const getCongesByDateRange = async (req: Request, res: Response): Promise
   }
 };
 
-export const getCongeStatistics = async (_req: Request, res: Response): Promise<void> => {
+export const getCongeStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await congeService.getCongeStatistics();
+    const stats = await congeService.getCongeStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la récupération des statistiques', error: error.message });

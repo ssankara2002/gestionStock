@@ -102,6 +102,7 @@ export const updateApprovisionnement = async (req: Request, res: Response): Prom
       approvisionnementData.lignes = lignes.map((ligne: any) => ({
         produitId: parseInt(ligne.produitId),
         quantite: parseInt(ligne.quantite),
+        prixUnitaire: parseFloat(ligne.prixUnitaire),
         montant: parseFloat(ligne.montant),
         dateFabrication: ligne.dateFabrication ? new Date(ligne.dateFabrication) : undefined,
         datePeremption: ligne.datePeremption ? new Date(ligne.datePeremption) : undefined,
@@ -176,9 +177,9 @@ export const getApprovisionnementsByDateRange = async (req: Request, res: Respon
   }
 };
 
-export const getApprovisionnementStatistics = async (_req: Request, res: Response): Promise<void> => {
+export const getApprovisionnementStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await approvisionnementService.getApprovisionnementStatistics();
+    const stats = await approvisionnementService.getApprovisionnementStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la récupération des statistiques', error: error.message });

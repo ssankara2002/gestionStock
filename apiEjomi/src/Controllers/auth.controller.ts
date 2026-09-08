@@ -2,39 +2,49 @@ import { Request, Response } from 'express';
 import authService from '../Services/auth.service';
 
 
-export const loginController = async (req: Request, res: Response): Promise<void> => {
+// Étape 1 : vérifier credentials et retourner la liste des entreprises
+export const loginEntreprisesController = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email et mot de passe sont requis' });
+      return;
+    }
+    const entreprises = await authService.getEntreprises(email, password);
+    res.status(200).json({ entreprises });
+  } catch (error: any) {
+    const status = error.message === 'Email ou mot de passe incorrect' ? 401 : 500;
+    res.status(status).json({ error: error.message });
+  }
+};
 
-    // Vérification des champs requis
+// Étape 2 (ou unique) : connexion complète avec entrepriseId optionnel
+export const loginController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password, entrepriseId } = req.body;
+
     if (!email || !password) {
       res.status(400).json({ error: 'Email et mot de passe sont requis' });
       return;
     }
 
-    const { token, user } = await authService.login(email, password);
+    const { token, user } = await authService.login(email, password, entrepriseId ? Number(entrepriseId) : undefined);
 
     if (!token || !user) {
       res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     } else {
-      // Définir le token dans un cookie HttpOnly sécurisé
       res.cookie('auth_token', token, {
-        httpOnly: false, // Permettre l'accès via JavaScript côté client pour localStorage
-        secure: process.env.NODE_ENV === 'production', // Utiliser HTTPS en production
-        sameSite: 'lax', // Protection contre les attaques CSRF
-        maxAge: 24 * 60 * 60 * 1000, // 24 heures
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
       });
-      res.status(200).json({ user, token }); // Renvoyer aussi le token pour localStorage
+      res.status(200).json({ user, token });
     }
   } catch (error: any) {
     console.log("Erreur dans loginController:", error);
-
-    // Gestion spécifique des erreurs d'authentification
-    if (error.message === 'Email ou mot de passe incorrect') {
-      res.status(401).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Erreur interne du serveur', details: error.message });
-    }
+    const status = error.message === 'Email ou mot de passe incorrect' ? 401 : 500;
+    res.status(status).json({ error: error.message });
   }
 };
 

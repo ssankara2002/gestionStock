@@ -36,7 +36,6 @@ export default function EmployesPage() {
       const payload = response.data
       return Array.isArray(payload) ? payload : (payload?.data || [])
     },
-    staleTime: 0,
   })
 
   const allEmployes: Employe[] = responseData || []

@@ -1,123 +1,156 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AppSelect } from "@/components/ui/app-select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { salairePaiementService } from "@/services/salaire-paiement-service"
 import type { CreateSalairePaiementDto } from "@/types/salairePaiement"
 import type { Employe } from "@/types"
+import { paiementSalaireSchema, type PaiementSalaireFormValues } from "@/lib/validations"
 
 interface FormulaireSalaireProps {
   employes: Employe[]
   onPaiementCreated: () => void
 }
 
+const MODE_OPTIONS = [
+  { value: "ESPECES", label: "Espèces" },
+  { value: "VIREMENT", label: "Virement" },
+  { value: "MOBILE_MONEY", label: "Mobile Money" },
+]
+
+const MODE_LABELS: Record<string, string> = {
+  ESPECES: "Espèces",
+  VIREMENT: "Virement",
+  MOBILE_MONEY: "Mobile Money",
+}
+
 export function FormulaireSalaire({ employes, onPaiementCreated }: FormulaireSalaireProps) {
-  const [selectedEmployeId, setSelectedEmployeId] = useState<string>("")
-  const [salaireBase, setSalaireBase] = useState<number>(0)
-  const [avantage, setAvantage] = useState<number>(0)
-  const [indemnite, setIndemnite] = useState<number>(0)
-  const [mois, setMois] = useState(new Date().getMonth() + 1)
-  const [annee, setAnnee] = useState(new Date().getFullYear())
-  const [modePaiement, setModePaiement] = useState("ESPECES")
-  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
-  const montantNet = salaireBase + avantage + indemnite
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<PaiementSalaireFormValues>({
+    resolver: zodResolver(paiementSalaireSchema),
+    defaultValues: {
+      employeId: undefined,
+      salaireBase: 0,
+      avantage: 0,
+      indemnite: 0,
+      mois: new Date().getMonth() + 1,
+      annee: new Date().getFullYear(),
+      modePaiement: "ESPECES",
+    },
+  })
+
+  const selectedEmployeId = watch("employeId")
+  const salaireBase = watch("salaireBase") ?? 0
+  const avantage = watch("avantage") ?? 0
+  const indemnite = watch("indemnite") ?? 0
+  const montantNet = Number(salaireBase) + Number(avantage) + Number(indemnite)
 
   useEffect(() => {
     if (selectedEmployeId) {
-      const employe = employes.find((e) => e.id.toString() === selectedEmployeId)
+      const employe = employes.find((e) => e.id === Number(selectedEmployeId))
       if (employe) {
-        setSalaireBase(employe.salaire)
+        setValue("salaireBase", employe.salaire, { shouldValidate: false })
       }
     } else {
-      setSalaireBase(0)
+      setValue("salaireBase", 0, { shouldValidate: false })
     }
-  }, [selectedEmployeId, employes])
+  }, [selectedEmployeId, employes, setValue])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!selectedEmployeId) {
-      toast({ title: "Erreur", description: "Veuillez sélectionner un employé.", variant: "destructive" })
-      return
-    }
-
-    if (salaireBase <= 0) {
-      toast({
-        title: "Erreur",
-        description: "Le salaire de base doit être supérieur à 0",
-        variant: "destructive",
-      })
-      return
-    }
-
+  const onSubmit = async (data: PaiementSalaireFormValues) => {
     try {
-      setLoading(true)
-      const data: CreateSalairePaiementDto = {
-        employeId: Number(selectedEmployeId),
-        montant: salaireBase,
-        avantage,
-        indemnite,
+      const payload: CreateSalairePaiementDto = {
+        employeId: data.employeId,
+        montant: data.salaireBase,
+        avantage: data.avantage,
+        indemnite: data.indemnite,
         datePaiement: new Date().toISOString(),
-        modePaiement,
-        periode: `${annee}-${mois.toString().padStart(2, "0")}-01`,
+        modePaiement: data.modePaiement,
+        periode: `${data.annee}-${String(data.mois).padStart(2, "0")}-01`,
       }
 
-      await salairePaiementService.create(data)
+      await salairePaiementService.create(payload)
 
-      toast({
-        title: "Succès",
-        description: "Le paiement de salaire a été enregistré avec succès",
+      toast({ title: "Succès", description: "Le paiement de salaire a été enregistré avec succès." })
+
+      reset({
+        employeId: undefined,
+        salaireBase: 0,
+        avantage: 0,
+        indemnite: 0,
+        mois: new Date().getMonth() + 1,
+        annee: new Date().getFullYear(),
+        modePaiement: "ESPECES",
       })
 
       onPaiementCreated()
     } catch (error: any) {
-      console.error("Erreur lors de l'enregistrement du salaire:", error)
       toast({
         title: "Erreur",
-        description: error?.message || "Impossible d'enregistrer le paiement",
+        description: error?.response?.data?.message || error?.message || "Impossible d'enregistrer le paiement",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
     }
   }
 
   return (
     <Card>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="employe">Employé</Label>
-              <AppSelect
-                placeholder="Sélectionner un employé"
-                value={selectedEmployeId ? { value: selectedEmployeId, label: employes.find(e => e.id.toString() === selectedEmployeId) ? `${employes.find(e => e.id.toString() === selectedEmployeId)!.user?.prenom} ${employes.find(e => e.id.toString() === selectedEmployeId)!.user?.nom}` : selectedEmployeId } : null}
-                onChange={(opt: any) => setSelectedEmployeId(opt?.value ?? "")}
-                options={employes.map(e => ({ value: e.id.toString(), label: `${e.user?.prenom} ${e.user?.nom}` }))}
+              <Label>Employé <span className="text-red-500">*</span></Label>
+              <Controller
+                name="employeId"
+                control={control}
+                render={({ field }) => (
+                  <AppSelect
+                    placeholder="Sélectionner un employé"
+                    value={field.value ? {
+                      value: String(field.value),
+                      label: employes.find(e => e.id === field.value)
+                        ? `${employes.find(e => e.id === field.value)!.user?.prenom} ${employes.find(e => e.id === field.value)!.user?.nom}`
+                        : String(field.value),
+                    } : null}
+                    onChange={(opt: any) => field.onChange(opt ? Number(opt.value) : undefined)}
+                    options={employes.map(e => ({ value: String(e.id), label: `${e.user?.prenom} ${e.user?.nom}` }))}
+                  />
+                )}
               />
+              {errors.employeId && <p className="text-sm text-red-500">{errors.employeId.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="salaireBase">Salaire de base (FCFA)</Label>
-              <Input id="salaireBase" type="number" min="0" value={salaireBase} onChange={(e) => setSalaireBase(Number(e.target.value))} required />
+              <Label htmlFor="salaireBase">Salaire de base (FCFA) <span className="text-red-500">*</span></Label>
+              <Input id="salaireBase" type="number" min="0" {...register("salaireBase")} />
+              {errors.salaireBase && <p className="text-sm text-red-500">{errors.salaireBase.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="avantage">Avantages (FCFA)</Label>
-              <Input id="avantage" type="number" min="0" value={avantage} onChange={(e) => setAvantage(Number(e.target.value))} />
+              <Label htmlFor="avantage">Avantages (FCFA) <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+              <Input id="avantage" type="number" min="0" {...register("avantage")} />
+              {errors.avantage && <p className="text-sm text-red-500">{errors.avantage.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="indemnite">Indemnités (FCFA)</Label>
-              <Input id="indemnite" type="number" min="0" value={indemnite} onChange={(e) => setIndemnite(Number(e.target.value))} />
+              <Label htmlFor="indemnite">Indemnités (FCFA) <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+              <Input id="indemnite" type="number" min="0" {...register("indemnite")} />
+              {errors.indemnite && <p className="text-sm text-red-500">{errors.indemnite.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -128,47 +161,36 @@ export function FormulaireSalaire({ employes, onPaiementCreated }: FormulaireSal
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="mois">Mois</Label>
-              <Input
-                id="mois"
-                type="number"
-                min="1"
-                max="12"
-                value={mois}
-                onChange={(e) => setMois(Number(e.target.value))}
-                required
-              />
+              <Label htmlFor="mois">Mois <span className="text-red-500">*</span></Label>
+              <Input id="mois" type="number" min="1" max="12" {...register("mois")} />
+              {errors.mois && <p className="text-sm text-red-500">{errors.mois.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="annee">Année</Label>
-              <Input
-                id="annee"
-                type="number"
-                min="2020"
-                max="2100"
-                value={annee}
-                onChange={(e) => setAnnee(Number(e.target.value))}
-                required
-              />
+              <Label htmlFor="annee">Année <span className="text-red-500">*</span></Label>
+              <Input id="annee" type="number" min="2020" max="2100" {...register("annee")} />
+              {errors.annee && <p className="text-sm text-red-500">{errors.annee.message}</p>}
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="modePaiement">Mode de Paiement</Label>
-              <AppSelect
-                value={{ value: modePaiement, label: { ESPECES: "Espèces", VIREMENT: "Virement", MOBILE_MONEY: "Mobile Money" }[modePaiement] ?? modePaiement }}
-                onChange={(opt: any) => setModePaiement(opt?.value ?? "ESPECES")}
-                options={[
-                  { value: "ESPECES", label: "Espèces" },
-                  { value: "VIREMENT", label: "Virement" },
-                  { value: "MOBILE_MONEY", label: "Mobile Money" },
-                ]}
+              <Label>Mode de paiement <span className="text-red-500">*</span></Label>
+              <Controller
+                name="modePaiement"
+                control={control}
+                render={({ field }) => (
+                  <AppSelect
+                    value={{ value: field.value, label: MODE_LABELS[field.value] ?? field.value }}
+                    onChange={(opt: any) => field.onChange(opt?.value ?? "ESPECES")}
+                    options={MODE_OPTIONS}
+                  />
+                )}
               />
+              {errors.modePaiement && <p className="text-sm text-red-500">{errors.modePaiement.message}</p>}
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Enregistrement..." : "Enregistrer le paiement"}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Enregistrement..." : "Enregistrer le paiement"}
           </Button>
         </form>
       </CardContent>

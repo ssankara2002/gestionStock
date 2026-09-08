@@ -4,6 +4,8 @@ import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Trash2, Save } from "lucide-react"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +21,7 @@ import { approvisionnementMatierePremiereService } from "@/services/approvisionn
 import { matierePremiereService, fournisseurService } from "@/services"
 import type { MatierePremiere } from "@/types/matierePremiere"
 import type { Fournisseur } from "@/types/fournisseur"
+import { approvisionnementMatiereSchema, type ApprovisionnementMatiereFormValues } from "@/lib/validations"
 
 interface LigneApprovisionnementMatierePremiereInput {
   matierePremiereId: number
@@ -32,28 +35,42 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
   const { toast } = useToast()
   const { user } = useAuth()
 
-  const [matieres, setMatieres] = useState<MatierePremiere[]>([])
-  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
-  const [loading, setLoading] = useState(true)
-
   interface LigneApprovisionnementLocal extends LigneApprovisionnementMatierePremiereInput {
     id: string
   }
 
+  const [matieres, setMatieres] = useState<MatierePremiere[]>([])
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
+  const [loading, setLoading] = useState(true)
   const [lignesApprovisionnement, setLignesApprovisionnement] = useState<LigneApprovisionnementLocal[]>([])
-  const [fournisseurId, setFournisseurId] = useState<number | undefined>(undefined)
-  const [employeId, setEmployeId] = useState<number | undefined>(undefined)
   const [montantTotal, setMontantTotal] = useState(0)
 
   const [selectedMatierePremiereId, setSelectedMatierePremiereId] = useState<string>("")
   const [selectedQuantity, setSelectedQuantity] = useState(1)
   const [selectedPrixUnitaire, setSelectedPrixUnitaire] = useState(0)
 
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<ApprovisionnementMatiereFormValues>({
+    resolver: zodResolver(approvisionnementMatiereSchema),
+    defaultValues: {
+      fournisseurId: 0,
+      employeId: 0,
+    },
+  })
+
+  const watchedFournisseurId = watch("fournisseurId")
+
   useEffect(() => {
     if (user?.employe?.id) {
-      setEmployeId(user.employe.id)
+      setValue("employeId", user.employe.id)
     }
-  }, [user])
+  }, [user, setValue])
 
   useEffect(() => {
     const loadData = async () => {
@@ -68,7 +85,11 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
         setMatieres(Array.isArray(matieresRes.data) ? matieresRes.data : (matieresRes.data as any).data || [])
         setFournisseurs(Array.isArray(fournisseursRes.data) ? fournisseursRes.data : (fournisseursRes.data as any).data || [])
 
-        setFournisseurId(approData.fournisseurId)
+        reset({
+          fournisseurId: approData.fournisseurId,
+          employeId: approData.employeId ?? (user?.employe?.id ?? 0),
+        })
+
         if (approData.lignes) {
           setLignesApprovisionnement(
             approData.lignes.map((ligne: any) => ({
@@ -91,7 +112,7 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
     }
 
     loadData()
-  }, [resolvedParams.id, toast])
+  }, [resolvedParams.id, toast, reset, user])
 
   useEffect(() => {
     const total = lignesApprovisionnement.reduce((sum, ligne) => sum + ligne.montant, 0)
@@ -155,11 +176,11 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
     )
   }
 
-  const enregistrerModifications = async () => {
-    if (!fournisseurId || !employeId || !lignesApprovisionnement.length) {
+  const onSubmit = async (data: ApprovisionnementMatiereFormValues) => {
+    if (!lignesApprovisionnement.length) {
       toast({
         title: "Erreur",
-        description: "Un fournisseur, un employé et au moins une matière première sont requis.",
+        description: "Veuillez ajouter au moins une matière première à l'approvisionnement",
         variant: "destructive",
       })
       return
@@ -167,8 +188,8 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
 
     try {
       const updateData = {
-        fournisseurId,
-        employeId,
+        fournisseurId: data.fournisseurId,
+        employeId: data.employeId,
         lignes: lignesApprovisionnement.map(({ id, ...ligne }) => ligne),
       }
 
@@ -182,6 +203,8 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
       toast({ title: "Erreur lors de la modification", description: error.response?.data?.message || "Une erreur est survenue", variant: "destructive" })
     }
   }
+
+  const selectedFournisseur = fournisseurs.find((f) => f.id === watchedFournisseurId)
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center"><p>Chargement...</p></div>
@@ -204,131 +227,178 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
             Modifier l'approvisionnement MP #{resolvedParams.id}
           </h1>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-8">
-              <Card>
-                <CardHeader><CardTitle>Informations</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fournisseur">Fournisseur</Label>
-                    <SearchableSelect 
-                      options={fournisseurs.map((f) => ({ value: f.id.toString(), label: `${f.prenom} ${f.nom}`}))}
-                      value={fournisseurId?.toString()}
-                      onValueChange={(value) => setFournisseurId(parseInt(value))}
-                      placeholder="Sélectionner un fournisseur"
-                      searchPlaceholder="Rechercher un fournisseur..."
-                      emptyMessage="Aucun fournisseur trouvé"
-                      className="w-full"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader><CardTitle>Ajouter des matières premières</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-                    <div className="flex-1 w-full">
-                      <Label htmlFor="matiere">Matière Première</Label>
-                      <SearchableSelect
-                        options={matieres.map((m) => ({ value: m.id.toString(), label: m.nom }))}
-                        value={selectedMatierePremiereId}
-                        onValueChange={setSelectedMatierePremiereId}
-                        placeholder="Sélectionner une matière première"
-                        searchPlaceholder="Rechercher..."
-                        emptyMessage="Aucune matière trouvée"
-                        className="w-full mt-1"
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-8">
+                <Card>
+                  <CardHeader><CardTitle>Informations</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fournisseur">Fournisseur</Label>
+                      <Controller
+                        name="fournisseurId"
+                        control={control}
+                        render={({ field }) => (
+                          <SearchableSelect
+                            options={fournisseurs.map((f) => ({ value: f.id.toString(), label: `${f.prenom} ${f.nom}` }))}
+                            value={field.value ? field.value.toString() : undefined}
+                            onValueChange={(value) => field.onChange(parseInt(value))}
+                            placeholder="Sélectionner un fournisseur"
+                            searchPlaceholder="Rechercher un fournisseur..."
+                            emptyMessage="Aucun fournisseur trouvé"
+                            className="w-full"
+                          />
+                        )}
                       />
+                      {errors.fournisseurId && (
+                        <p className="text-sm text-red-500 mt-1">{errors.fournisseurId.message}</p>
+                      )}
                     </div>
-                    <div className="w-full sm:w-auto">
-                      <Label>Quantité</Label>
-                      <Input type="number" min="1" value={selectedQuantity} onChange={(e) => setSelectedQuantity(Number.parseInt(e.target.value) || 1)} className="w-full sm:w-24 mt-1" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader><CardTitle>Ajouter des matières premières</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                      <div className="flex-1 w-full">
+                        <Label htmlFor="matiere">Matière Première</Label>
+                        <SearchableSelect
+                          options={matieres.map((m) => ({ value: m.id.toString(), label: m.nom }))}
+                          value={selectedMatierePremiereId}
+                          onValueChange={setSelectedMatierePremiereId}
+                          placeholder="Sélectionner une matière première"
+                          searchPlaceholder="Rechercher..."
+                          emptyMessage="Aucune matière trouvée"
+                          className="w-full mt-1"
+                        />
+                      </div>
+                      <div className="w-full sm:w-auto">
+                        <Label>Quantité</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={selectedQuantity}
+                          onChange={(e) => setSelectedQuantity(Number.parseInt(e.target.value) || 1)}
+                          className="w-full sm:w-24 mt-1"
+                        />
+                      </div>
+                      <div className="w-full sm:w-auto">
+                        <Label>Prix unitaire (FCFA)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={selectedPrixUnitaire}
+                          onChange={(e) => setSelectedPrixUnitaire(Number.parseFloat(e.target.value) || 0)}
+                          className="w-full sm:w-32 mt-1"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => { if (selectedMatierePremiereId) ajouterLigne(selectedMatierePremiereId) }}
+                        className="w-full sm:w-auto"
+                      >
+                        <Plus className="mr-2 h-4 w-4" /> Ajouter
+                      </Button>
                     </div>
-                    <div className="w-full sm:w-auto">
-                      <Label>Prix unitaire (FCFA)</Label>
-                      <Input type="number" min="0" step="0.01" value={selectedPrixUnitaire} onChange={(e) => setSelectedPrixUnitaire(Number.parseFloat(e.target.value) || 0)} className="w-full sm:w-32 mt-1" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader><CardTitle>Détails</CardTitle></CardHeader>
+                  <CardContent>
+                    {lignesApprovisionnement.length === 0 ? (
+                      <div className="text-center p-8">Aucune matière première ajoutée</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Matière Première</TableHead>
+                              <TableHead className="text-center">Quantité</TableHead>
+                              <TableHead className="text-right">Prix unitaire</TableHead>
+                              <TableHead className="text-right">Total</TableHead>
+                              <TableHead className="w-[70px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {lignesApprovisionnement.map((ligne) => {
+                              const matiere = matieres.find((m) => m.id === String(ligne.matierePremiereId))
+                              const prixUnitaire = ligne.quantite > 0 ? ligne.montant / ligne.quantite : 0
+
+                              return (
+                                <TableRow key={ligne.id}>
+                                  <TableCell className="font-medium">{matiere?.nom || 'Introuvable'}</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center justify-center">
+                                      <Button type="button" variant="outline" size="icon" className="h-7 w-7 rounded-r-none" onClick={() => updateQuantite(ligne.id, ligne.quantite - 1)}>-</Button>
+                                      <div className="flex h-7 w-10 items-center justify-center border-y">{ligne.quantite}</div>
+                                      <Button type="button" variant="outline" size="icon" className="h-7 w-7 rounded-l-none" onClick={() => updateQuantite(ligne.id, ligne.quantite + 1)}>+</Button>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      className="w-24 h-7 text-right ml-auto"
+                                      value={prixUnitaire.toFixed(2)}
+                                      onChange={(e) => updatePrixUnitaire(ligne.id, Number.parseFloat(e.target.value) || 0)}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium">{ligne.montant.toFixed(2)} FCFA</TableCell>
+                                  <TableCell>
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => supprimerLigne(ligne.id)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div>
+                <Card className="sticky top-8">
+                  <CardHeader><CardTitle>Récapitulatif</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <Separator />
+                    <div className="flex justify-between font-medium text-lg">
+                      <span>Total</span>
+                      <span>{montantTotal.toFixed(2)} FCFA</span>
                     </div>
-                    <Button onClick={() => { if (selectedMatierePremiereId) ajouterLigne(selectedMatierePremiereId) }} className="w-full sm:w-auto">
-                      <Plus className="mr-2 h-4 w-4" /> Ajouter
+                    <div className="pt-4">
+                      <div className="rounded-lg bg-muted p-4">
+                        <div className="text-sm">
+                          <p className="font-medium">Fournisseur</p>
+                          <p className="text-muted-foreground">
+                            {selectedFournisseur
+                              ? `${selectedFournisseur.prenom} ${selectedFournisseur.nom}`.trim()
+                              : "Fournisseur non sélectionné"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-4">
+                    <Button type="submit" className="w-full" size="lg">
+                      <Save className="mr-2 h-4 w-4" />
+                      Enregistrer
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader><CardTitle>Détails</CardTitle></CardHeader>
-                <CardContent>
-                  {lignesApprovisionnement.length === 0 ? (
-                    <div className="text-center p-8">Aucune matière première ajoutée</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Matière Première</TableHead>
-                            <TableHead className="text-center">Quantité</TableHead>
-                            <TableHead className="text-right">Prix unitaire</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                            <TableHead className="w-[70px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {lignesApprovisionnement.map((ligne) => {
-                            const matiere = matieres.find((m) => m.id === ligne.matierePremiereId)
-                            const prixUnitaire = ligne.quantite > 0 ? ligne.montant / ligne.quantite : 0
-
-                            return (
-                              <TableRow key={ligne.id}>
-                                <TableCell className="font-medium">{matiere?.nom || 'Introuvable'}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center justify-center">
-                                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-r-none" onClick={() => updateQuantite(ligne.id, ligne.quantite - 1)}>-</Button>
-                                    <div className="flex h-7 w-10 items-center justify-center border-y">{ligne.quantite}</div>
-                                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-l-none" onClick={() => updateQuantite(ligne.id, ligne.quantite + 1)}>+</Button>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Input type="number" min="0" step="0.01" className="w-24 h-7 text-right ml-auto" value={prixUnitaire.toFixed(2)} onChange={(e) => updatePrixUnitaire(ligne.id, Number.parseFloat(e.target.value) || 0)} />
-                                </TableCell>
-                                <TableCell className="text-right font-medium">{ligne.montant.toFixed(2)} FCFA</TableCell>
-                                <TableCell>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => supprimerLigne(ligne.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href="/magasinier/matieres-premieres/approvisionnements">Annuler</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
             </div>
-
-            <div>
-              <Card className="sticky top-8">
-                <CardHeader><CardTitle>Récapitulatif</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <Separator />
-                  <div className="flex justify-between font-medium text-lg">
-                    <span>Total</span>
-                    <span>{montantTotal.toFixed(2)} FCFA</span>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                  <Button onClick={enregistrerModifications} className="w-full" size="lg">
-                    <Save className="mr-2 h-4 w-4" />
-                    Enregistrer
-                  </Button>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href="/magasinier/matieres-premieres/approvisionnements">Annuler</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </div>
+          </form>
         </div>
       </main>
       <Footer />

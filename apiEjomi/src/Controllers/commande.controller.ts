@@ -37,8 +37,9 @@ export const createCommande = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Assigner le vendeurId à partir de l'employé authentifié
-  const finalCommandeData = { ...commandeData, vendeurId: employe.id };
+    // Assigner le vendeurId et l'entrepriseId à partir de l'utilisateur authentifié
+  const entrepriseId = req.user?.entrepriseId;
+  const finalCommandeData = { ...commandeData, vendeurId: employe.id, entrepriseId };
   // Assurer que montantPaye et modePaiement (si fournis) sont passés au service
   if (commandeData.montantPaye) finalCommandeData.montantPaye = Number(commandeData.montantPaye);
   if (commandeData.modePaiement) finalCommandeData.modePaiement = commandeData.modePaiement;
@@ -113,13 +114,28 @@ export const getCommandeById = async (req: Request, res: Response): Promise<void
       res.status(404).json({ success: false, message: 'Commande introuvable' });
       return;
     }
-    // Calculer le résumé des paiements
     const paiements = (commande as any).paiements || [];
     const totalPaye = paiements.reduce((s: number, p: any) => s + (Number(p.montant) || 0), 0);
     const totalAPayer = Number((commande as any).montant || 0);
     const creance = Math.max(0, totalAPayer - totalPaye);
 
-    res.status(200).json({ success: true, data: { ...commande, paymentSummary: { total: totalAPayer, totalPaye, creance }, paiements } });
+    // Calculer la marge FIFO à partir du coutRevient de chaque ligne
+    const lignes = (commande as any).lignes || [];
+    const coutRevientTotal = lignes.reduce((s: number, l: any) => {
+      return s + (Number(l.coutRevient ?? 0) * Number(l.quantiteCommande));
+    }, 0);
+    const margeTotal = totalAPayer - coutRevientTotal;
+    const margePct = coutRevientTotal > 0 ? ((margeTotal / coutRevientTotal) * 100).toFixed(1) : null;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...commande,
+        paymentSummary: { total: totalAPayer, totalPaye, creance },
+        paiements,
+        margeSummary: { coutRevient: coutRevientTotal, marge: margeTotal, margePct },
+      },
+    });
   } catch (error: any) {
     console.error(`Erreur lors de la récupération de la commande ${req.params.id}:`, error);
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.', error: error.message });
@@ -177,9 +193,9 @@ export const deleteCommande = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const getCommandeStatistics = async (_req: Request, res: Response): Promise<void> => {
+export const getCommandeStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await commandeService.getCommandeStatistics();
+    const stats = await commandeService.getCommandeStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     console.error('Erreur lors de la récupération des statistiques des commandes:', error);

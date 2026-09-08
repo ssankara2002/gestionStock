@@ -14,6 +14,10 @@ interface UserPayload {
 
 // Définition stricte des rôles et leurs accès
 const ROLE_ACCESS = {
+  SUPER_ADMIN: {
+    name: "SUPER_ADMIN",
+    allowedPaths: ["*"], // Accès total à toute la plateforme
+  },
   ADMIN: {
     name: "ADMIN",
     allowedPaths: ["*"], // Accès à tout

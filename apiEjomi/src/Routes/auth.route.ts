@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import authService from '../Services/auth.service';
 import {
   loginController,
+  loginEntreprisesController,
   registerController,
   registerEntrepriseController,
   forgotPasswordController,
@@ -226,6 +227,7 @@ router.post(
  *         description: Erreur interne du serveur
  */
 router.post('/login', loginController);
+router.post('/login/entreprises', loginEntreprisesController);
 router.post('/register-entreprise', registerEntrepriseController);
 router.post('/forgot-password', forgotPasswordController);
 router.post('/reset-password', resetPasswordController);

@@ -4,8 +4,8 @@ export interface Client {
   id: number
   nom: string
   prenom: string
-  email?: string
-  tel: string
+  email?: string | null
+  tel?: string | null
   adresse: string
   password?: string
   roleId?: number
@@ -19,8 +19,8 @@ export interface Client {
 export interface ClientCreateData {
   nom: string
   prenom: string
-  email?: string
-  tel: string
+  email?: string | null
+  tel?: string | null
   adresse: string
   password?: string
 }
@@ -37,10 +37,10 @@ export interface ClientUpdateData {
 export const clientService = {
   getAll: (page?: number, limit?: number) => {
     const params = new URLSearchParams()
+    params.append('role', 'CLIENT')
     if (page) params.append('page', page.toString())
     if (limit) params.append('limit', limit.toString())
-    const query = params.toString() ? `?${params.toString()}` : ''
-    return apiClient.get<any>(`/users${query}`)
+    return apiClient.get<any>(`/users?${params.toString()}`)
   },
 
   getById: (id: number) => apiClient.get<{ data: Client }>(`/users/${id}`),

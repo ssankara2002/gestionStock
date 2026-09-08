@@ -25,6 +25,7 @@ interface EmployeWithUserCreateData {
   roleId?: number;
   salaire: number;
   dateEmbauche: Date;
+  entrepriseId?: number;
 }
 
 interface EmployeWithUserUpdateData {
@@ -165,6 +166,7 @@ const createEmployeWithUser = async (data: EmployeWithUserCreateData) => {
         tel: data.tel,
         password: hashedPassword,
         roleId: data.roleId,
+        entrepriseId: data.entrepriseId,
       },
     });
 
@@ -192,19 +194,16 @@ const createEmployeWithUser = async (data: EmployeWithUserCreateData) => {
   });
 };
 
-const getEmployeStatistics = async () => {
+const getEmployeStatistics = async (entrepriseId?: number) => {
+  const w = entrepriseId ? { user: { entrepriseId } } : {};
   const [total, totalSalaires, averageSalaire] = await Promise.all([
-    prisma.employe.count(),
-    prisma.employe.aggregate({
-      _sum: { salaire: true }
-    }),
-    prisma.employe.aggregate({
-      _avg: { salaire: true }
-    })
+    prisma.employe.count({ where: w }),
+    prisma.employe.aggregate({ where: w, _sum: { salaire: true } }),
+    prisma.employe.aggregate({ where: w, _avg: { salaire: true } }),
   ]);
 
   return {
-    total,
+    totalEmployes: total,
     totalSalaires: totalSalaires._sum.salaire || 0,
     averageSalaire: averageSalaire._avg.salaire || 0,
   };

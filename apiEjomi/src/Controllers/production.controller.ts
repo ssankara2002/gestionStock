@@ -1,16 +1,17 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import productionService from '../Services/production.service';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
-export const getAllProductions = async (_req: Request, res: Response): Promise<void> => {
+export const getAllProductions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const productions = await productionService.getAllProductions();
+    const productions = await productionService.getAllProductions(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: productions });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la récupération des productions', error: error.message });
   }
 };
 
-export const getProductionById = async (req: Request, res: Response): Promise<void> => {
+export const getProductionById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const production = await productionService.getProductionById(parseInt(id));
@@ -26,7 +27,7 @@ export const getProductionById = async (req: Request, res: Response): Promise<vo
   }
 };
 
-export const createProduction = async (req: Request, res: Response): Promise<void> => {
+export const createProduction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { produitId, quantiteFabriquee, dateProduction, employeId, lot, consommations } = req.body;
 
@@ -59,7 +60,7 @@ export const createProduction = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const updateProduction = async (req: Request, res: Response): Promise<void> => {
+export const updateProduction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { produitId, quantiteFabriquee, dateProduction, employeId, lot } = req.body;
@@ -83,7 +84,7 @@ export const updateProduction = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const deleteProduction = async (req: Request, res: Response): Promise<void> => {
+export const deleteProduction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await productionService.deleteProduction(parseInt(id));
@@ -98,7 +99,7 @@ export const deleteProduction = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const getProductionsByProduit = async (req: Request, res: Response): Promise<void> => {
+export const getProductionsByProduit = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { produitId } = req.params;
     const productions = await productionService.getProductionsByProduit(parseInt(produitId));
@@ -109,7 +110,7 @@ export const getProductionsByProduit = async (req: Request, res: Response): Prom
   }
 };
 
-export const getProductionsByEmploye = async (req: Request, res: Response): Promise<void> => {
+export const getProductionsByEmploye = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { employeId } = req.params;
     const productions = await productionService.getProductionsByEmploye(parseInt(employeId));
@@ -120,9 +121,9 @@ export const getProductionsByEmploye = async (req: Request, res: Response): Prom
   }
 };
 
-export const getProductionStatistics = async (_req: Request, res: Response): Promise<void> => {
+export const getProductionStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await productionService.getProductionStatistics();
+    const stats = await productionService.getProductionStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la récupération des statistiques', error: error.message });

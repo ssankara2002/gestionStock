@@ -47,7 +47,7 @@ export const deleteApprovisionnementMatierePremiere = async (req: AuthenticatedR
 
 export const getAllApprovisionnementsMatierePremiere = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const result = await approvisionnementMatierePremiereService.getAll(req.query);
+    const result = await approvisionnementMatierePremiereService.getAll(req.query, req.user?.entrepriseId);
     console.log(`[API] Récupération de ${result.data.length} approvisionnements MP sur un total de ${result.pagination.total}.`);
     res.status(200).json({ success: true, ...result });
   } catch (error: any) {

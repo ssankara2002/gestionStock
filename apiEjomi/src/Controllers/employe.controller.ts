@@ -141,9 +141,9 @@ export const getEmployeByUserId = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const getEmployeStatistics = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await employeService.getEmployeStatistics();
+    const stats = await employeService.getEmployeStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     console.error("Erreur dans getEmployeStatistics:", error.message);
@@ -151,16 +151,20 @@ export const getEmployeStatistics = async (req: Request, res: Response): Promise
   }
 };
 
-export const createEmployeWithUser = async (req: Request, res: Response): Promise<void> => {
+export const createEmployeWithUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { nom, prenom, email, adresse, tel, password, roleId, salaire, dateEmbauche } = req.body;
 
     // Validation des champs obligatoires
-    if (!nom || !prenom || !tel || !adresse || !salaire || !dateEmbauche) {
+    if (!nom || !prenom || !adresse || !salaire || !dateEmbauche) {
       res.status(400).json({
         success: false,
-        message: 'Les champs nom, prénom, téléphone, adresse, salaire et date d\'embauche sont obligatoires'
+        message: 'Les champs nom, prénom, adresse, salaire et date d\'embauche sont obligatoires'
       });
+      return;
+    }
+    if (!email && !tel) {
+      res.status(400).json({ success: false, message: 'Un email ou un numéro de téléphone est requis' });
       return;
     }
 
@@ -191,7 +195,8 @@ export const createEmployeWithUser = async (req: Request, res: Response): Promis
       password: password || null,
       roleId: roleId ? parseInt(roleId) : undefined,
       salaire: parseFloat(salaire),
-      dateEmbauche: new Date(dateEmbauche)
+      dateEmbauche: new Date(dateEmbauche),
+      entrepriseId: req.user?.entrepriseId,
     };
 
     const employe = await employeService.createEmployeWithUser(employeData);

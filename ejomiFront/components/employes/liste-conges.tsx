@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
-import { Check, Eye, Pencil, Trash2, X } from "lucide-react"
+import { Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -150,7 +150,7 @@ export function ListeConges({ employeId }: ListeCongesProps) {
 
   return (
     <div className="space-y-6">
-      <Button onClick={() => handleEdit(null)}>
+      <Button onClick={() => { setEditingConge(null); setIsDialogOpen(true) }}>
         <Plus className="mr-2 h-4 w-4" />
         Nouvelle demande de congé
       </Button>
@@ -192,7 +192,7 @@ export function ListeConges({ employeId }: ListeCongesProps) {
                           <Pencil className="h-4 w-4" />
                         </Button>
                       )}
-                      {conge.statut === "en attente" && (
+                      {conge.statut === "EN_ATTENTE" && (
                         <>
                           <Button variant="ghost" size="sm" onClick={() => handleApprouver(conge.id)}>
                             <Check className="h-4 w-4 text-green-600" />
@@ -245,7 +245,7 @@ export function ListeConges({ employeId }: ListeCongesProps) {
           <DialogHeader>
             <DialogTitle>{editingConge ? "Modifier la demande" : "Nouvelle demande de congé"}</DialogTitle>
           </DialogHeader>
-          <FormulaireConge employeId={employeId} conge={editingConge} onCongeSubmit={handleCongeSubmit} />
+          <FormulaireConge employeId={employeId} conge={editingConge ?? undefined} onCongeSubmit={handleCongeSubmit} />
         </DialogContent>
       </Dialog>
     </div>

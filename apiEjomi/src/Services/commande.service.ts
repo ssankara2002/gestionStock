@@ -26,6 +26,7 @@ interface LigneCommandeInput {
 interface CommandeCreateInput {
   clientId: number;
   vendeurId?: number;
+  entrepriseId?: number;
   dateCommande: Date;
   reduction: number;
   statut: string;
@@ -65,6 +66,7 @@ const createCommande = async (data: CommandeCreateInput) => {
       data: {
         clientId: data.clientId,
         vendeurId: data.vendeurId,
+        entrepriseId: data.entrepriseId,
         dateCommande: data.dateCommande,
         montant: montantFinal,
         statut: 'EN_ATTENTE' as any,
@@ -73,11 +75,42 @@ const createCommande = async (data: CommandeCreateInput) => {
       },
     });
 
-    // 4. Créer les lignes avec lien vers StockBoutique et décrémenter le stock
+    // 4. Créer les lignes avec lien vers StockBoutique, décrémenter le stock et calculer le coût FIFO
     for (const ligne of data.lignes) {
       const stockBoutique = await tx.stockBoutique.findUnique({
         where: { produitId: ligne.produitId },
       });
+
+      // FIFO : consommer les lots par ordre de date d'approvisionnement
+      const lots = await tx.lotStock.findMany({
+        where: { produitId: ligne.produitId, quantiteRestante: { gt: 0 } },
+        orderBy: { dateAppro: 'asc' },
+      });
+
+      let quantiteAConsommer = ligne.quantite;
+      let coutTotal = 0;
+
+      for (const lot of lots) {
+        if (quantiteAConsommer <= 0) break;
+        const qte = Math.min(lot.quantiteRestante, quantiteAConsommer);
+        coutTotal += qte * lot.prixAchat;
+        quantiteAConsommer -= qte;
+        await tx.lotStock.update({
+          where: { id: lot.id },
+          data: { quantiteRestante: { decrement: qte } },
+        });
+      }
+
+      // Si pas assez de lots (stock boutique vient d'un transfert sans lot), fallback sur prixAchatUnitaire
+      if (quantiteAConsommer > 0) {
+        const produit = await tx.produit.findUnique({
+          where: { id: ligne.produitId },
+          select: { prixAchatUnitaire: true },
+        });
+        coutTotal += quantiteAConsommer * (produit?.prixAchatUnitaire ?? 0);
+      }
+
+      const coutRevient = ligne.quantite > 0 ? coutTotal / ligne.quantite : 0;
 
       await tx.ligneCommande.create({
         data: {
@@ -87,6 +120,7 @@ const createCommande = async (data: CommandeCreateInput) => {
           quantiteCommande: ligne.quantite,
           prixUnitaire: ligne.prixUnitaire,
           montant: Math.max(0, ligne.prixUnitaire * ligne.quantite - ligne.reduction),
+          coutRevient,
         },
       });
 
@@ -309,7 +343,7 @@ const getCommandesByClient = async (clientId: number) => {
   });
 };
 
-const getCommandeStatistics = async () => {
+const getCommandeStatistics = async (entrepriseId?: number) => {
   const now = new Date();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay());
@@ -319,6 +353,15 @@ const getCommandeStatistics = async () => {
   const startOfYear = new Date(now.getFullYear(), 0, 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  const w = entrepriseId ? { entrepriseId } : {};
+
+  // Résoudre d'abord les commandeIds pour éviter les colonnes ambiguës dans le groupBy de ligneCommande
+  let commandeIds: number[] | undefined;
+  if (entrepriseId) {
+    const cmds = await prisma.commande.findMany({ where: { entrepriseId }, select: { id: true } });
+    commandeIds = cmds.map(c => c.id);
+  }
 
   const [
     totalRevenu,
@@ -332,38 +375,33 @@ const getCommandeStatistics = async () => {
     commandesEnAttente,
     commandesLivrees,
   ] = await prisma.$transaction([
-    prisma.commande.aggregate({ _sum: { montant: true } }),
-    prisma.commande.groupBy({ by: ['statut'], _count: { statut: true }, orderBy: { _count: { statut: 'desc' } } }),
+    prisma.commande.aggregate({ where: w, _sum: { montant: true } }),
+    prisma.commande.groupBy({ by: ['statut'], where: w, _count: { statut: true }, orderBy: { _count: { statut: 'desc' } } }),
     prisma.ligneCommande.groupBy({
       by: ['produitId'],
+      where: commandeIds ? { commandeId: { in: commandeIds } } : {},
       _sum: { quantiteCommande: true, montant: true },
       orderBy: { _sum: { quantiteCommande: 'desc' } },
       take: 5,
     }),
-    prisma.$queryRaw`
-      SELECT DATE("dateCommande") as date, COUNT(*)::int as count, SUM(montant)::float as total
-      FROM "Commande" WHERE "dateCommande" >= ${startOfWeek}
-      GROUP BY DATE("dateCommande") ORDER BY date ASC
-    `,
-    prisma.$queryRaw`
-      SELECT DATE("dateCommande") as date, COUNT(*)::int as count, SUM(montant)::float as total
-      FROM "Commande" WHERE "dateCommande" >= ${startOfMonth}
-      GROUP BY DATE("dateCommande") ORDER BY date ASC
-    `,
-    prisma.$queryRaw`
-      SELECT EXTRACT(MONTH FROM "dateCommande")::int as month, COUNT(*)::int as count, SUM(montant)::float as total
-      FROM "Commande" WHERE "dateCommande" >= ${startOfYear}
-      GROUP BY EXTRACT(MONTH FROM "dateCommande") ORDER BY month ASC
-    `,
-    prisma.commande.count({ where: { dateCommande: { gte: startOfMonth } } }),
-    prisma.commande.count({ where: { dateCommande: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
-    prisma.commande.count({ where: { statut: 'EN_ATTENTE' } }),
-    prisma.commande.count({ where: { statut: 'LIVREE' } }),
+    entrepriseId
+      ? prisma.$queryRaw`SELECT DATE("dateCommande") as date, COUNT(*)::int as count, SUM(montant)::float as total FROM "Commande" WHERE "dateCommande" >= ${startOfWeek} AND "entrepriseId" = ${entrepriseId} GROUP BY DATE("dateCommande") ORDER BY date ASC`
+      : prisma.$queryRaw`SELECT DATE("dateCommande") as date, COUNT(*)::int as count, SUM(montant)::float as total FROM "Commande" WHERE "dateCommande" >= ${startOfWeek} GROUP BY DATE("dateCommande") ORDER BY date ASC`,
+    entrepriseId
+      ? prisma.$queryRaw`SELECT DATE("dateCommande") as date, COUNT(*)::int as count, SUM(montant)::float as total FROM "Commande" WHERE "dateCommande" >= ${startOfMonth} AND "entrepriseId" = ${entrepriseId} GROUP BY DATE("dateCommande") ORDER BY date ASC`
+      : prisma.$queryRaw`SELECT DATE("dateCommande") as date, COUNT(*)::int as count, SUM(montant)::float as total FROM "Commande" WHERE "dateCommande" >= ${startOfMonth} GROUP BY DATE("dateCommande") ORDER BY date ASC`,
+    entrepriseId
+      ? prisma.$queryRaw`SELECT EXTRACT(MONTH FROM "dateCommande")::int as month, COUNT(*)::int as count, SUM(montant)::float as total FROM "Commande" WHERE "dateCommande" >= ${startOfYear} AND "entrepriseId" = ${entrepriseId} GROUP BY EXTRACT(MONTH FROM "dateCommande") ORDER BY month ASC`
+      : prisma.$queryRaw`SELECT EXTRACT(MONTH FROM "dateCommande")::int as month, COUNT(*)::int as count, SUM(montant)::float as total FROM "Commande" WHERE "dateCommande" >= ${startOfYear} GROUP BY EXTRACT(MONTH FROM "dateCommande") ORDER BY month ASC`,
+    prisma.commande.count({ where: { ...w, dateCommande: { gte: startOfMonth } } }),
+    prisma.commande.count({ where: { ...w, dateCommande: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
+    prisma.commande.count({ where: { ...w, statut: 'EN_ATTENTE' } }),
+    prisma.commande.count({ where: { ...w, statut: 'LIVREE' } }),
   ]);
 
   const produitsIds = topProduits.map((p) => p.produitId);
   const produits = await prisma.produit.findMany({
-    where: { id: { in: produitsIds } },
+    where: { id: { in: produitsIds }, ...(entrepriseId ? { entrepriseId } : {}) },
     select: { id: true, libelle: true, image: true, prixDeVenteUnitaire: true },
   });
 

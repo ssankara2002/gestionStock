@@ -19,8 +19,9 @@ interface PaiementUpdateData {
   commandeId?: number;
 }
 
-const getAllPaiements = async () => {
+const getAllPaiements = async (entrepriseId?: number) => {
   return await prisma.paiement.findMany({
+    where: entrepriseId ? { commande: { entrepriseId } } : {},
     include: {
       commande: {
         include: {
@@ -387,22 +388,18 @@ const generateRecuPaiementPdf = async (paiementId: number): Promise<Buffer | nul
   });
 };
 
-const getPaiementStatistics = async () => {
+const getPaiementStatistics = async (entrepriseId?: number) => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const commandeWhere = entrepriseId ? { entrepriseId } : {};
 
-  // Récupérer toutes les commandes avec leurs paiements
   const commandes = await prisma.commande.findMany({
+    where: commandeWhere,
     include: {
-      paiements: {
-        where: {
-          statut: 'REUSSI',
-        },
-      },
+      paiements: { where: { statut: 'REUSSI' } },
     },
   });
 
-  // Calculer les statistiques
   let totalPaiements = 0;
   let totalCreances = 0;
   let totalPaiementsCeMois = 0;
@@ -410,11 +407,8 @@ const getPaiementStatistics = async () => {
   commandes.forEach(commande => {
     const montantCommande = Number(commande.montant || 0);
     const totalPaye = commande.paiements.reduce((sum, p) => sum + Number(p.montant || 0), 0);
-
     totalPaiements += totalPaye;
     totalCreances += Math.max(0, montantCommande - totalPaye);
-
-    // Paiements de ce mois
     commande.paiements.forEach(p => {
       if (p.datePaiement && p.datePaiement >= startOfMonth) {
         totalPaiementsCeMois += Number(p.montant || 0);
@@ -422,14 +416,10 @@ const getPaiementStatistics = async () => {
     });
   });
 
-  // Calculer les dépenses (approvisionnements + salaires)
+  const approWhere = entrepriseId ? { entrepriseId } : {};
   const [approvisionnements, salaires] = await Promise.all([
-    prisma.approvisionnement.aggregate({
-      _sum: { montant: true },
-    }),
-    prisma.salairePaiement.aggregate({
-      _sum: { montant: true },
-    }),
+    prisma.approvisionnement.aggregate({ where: approWhere, _sum: { montant: true } }),
+    prisma.salairePaiement.aggregate({ _sum: { montant: true } }),
   ]);
 
   const totalDepenses = (approvisionnements._sum.montant || 0) + (salaires._sum.montant || 0);

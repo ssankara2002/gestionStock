@@ -33,9 +33,9 @@ export function HomeHeader({ logo, nom }: HomeHeaderProps = {}) {
           <Button asChild size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10">
             <Link href="/auth/login">Connexion</Link>
           </Button>
-          <Button asChild size="sm">
+          {/* <Button asChild size="sm">
             <Link href="/auth/register">S'inscrire</Link>
-          </Button>
+          </Button> */}
         </div>
       </div>
     </header>

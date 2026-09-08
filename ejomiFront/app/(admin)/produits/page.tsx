@@ -44,7 +44,6 @@ export default function WarehouseProductsPage() {
       const res = await produitService.getAll()
       return res.data.data
     },
-    staleTime: 0,
   })
 
   // Delete mutation
@@ -169,7 +168,7 @@ export default function WarehouseProductsPage() {
                         filteredProducts.map((product) => {
                           const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:3000"
                           const imageUrl = product.image
-                            ? `${baseUrl}/uploads/${product.image}`
+                            ? (product.image.startsWith("http") ? product.image : `${baseUrl}/uploads/${product.image}`)
                             : "/placeholder.svg?height=300&width=400"
 
                           return (

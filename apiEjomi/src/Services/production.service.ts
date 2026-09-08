@@ -25,8 +25,10 @@ interface ProductionUpdateData {
   consommations?: ConsommationData[];
 }
 
-const getAllProductions = async () => {
+const getAllProductions = async (entrepriseId?: number) => {
+  const where = entrepriseId ? { produit: { entrepriseId } } : {};
   return await prisma.production.findMany({
+    where,
     include: {
       produit: {
         select: {
@@ -253,27 +255,29 @@ const getProductionsByEmploye = async (employeId: number) => {
   });
 };
 
-const getProductionStatistics = async () => {
+const getProductionStatistics = async (entrepriseId?: number) => {
+  // Résoudre d'abord les produitIds de l'entreprise pour éviter les colonnes ambiguës dans groupBy
+  let produitIds: number[] | undefined;
+  if (entrepriseId) {
+    const produits = await prisma.produit.findMany({
+      where: { entrepriseId },
+      select: { id: true },
+    });
+    produitIds = produits.map(p => p.id);
+  }
+
+  const w = produitIds ? { produitId: { in: produitIds } } : {};
+
   const [total, totalQuantite, byProduit, byEmploye] = await Promise.all([
-    prisma.production.count(),
-    prisma.production.aggregate({
-      _sum: { quantiteFabriquee: true },
-    }),
-    prisma.production.groupBy({
-      by: ['produitId'],
-      _count: { id: true },
-      _sum: { quantiteFabriquee: true },
-    }),
-    prisma.production.groupBy({
-      by: ['employeId'],
-      _count: { id: true },
-      _sum: { quantiteFabriquee: true },
-    }),
+    prisma.production.count({ where: w }),
+    prisma.production.aggregate({ where: w, _sum: { quantiteFabriquee: true } }),
+    prisma.production.groupBy({ by: ['produitId'], where: w, _count: { id: true }, _sum: { quantiteFabriquee: true } }),
+    prisma.production.groupBy({ by: ['employeId'], where: w, _count: { id: true }, _sum: { quantiteFabriquee: true } }),
   ]);
 
   return {
-    total,
-    totalQuantite: totalQuantite._sum.quantiteFabriquee || 0,
+    totalProductions: total,
+    quantiteTotale: totalQuantite._sum.quantiteFabriquee || 0,
     byProduit,
     byEmploye,
   };

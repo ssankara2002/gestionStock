@@ -10,6 +10,7 @@ interface UserCreateData {
   tel: string;
   password?: string;
   roleId?: number;
+  entrepriseId?: number;
 }
 
 interface UserUpdateData {
@@ -22,8 +23,10 @@ interface UserUpdateData {
   roleId?: number;
 }
 
-const getAllUsers = async () => {
+const getAllUsers = async (entrepriseId?: number) => {
+  const where: any = entrepriseId ? { entrepriseId } : {};
   return await prisma.user.findMany({
+    where,
     include: {
       role: {
         select: {
@@ -78,6 +81,7 @@ const createUser = async (data: UserCreateData) => {
       tel: data.tel,
       password: data.password,
       roleId: data.roleId,
+      entrepriseId: data.entrepriseId,
     },
     include: {
       role: {

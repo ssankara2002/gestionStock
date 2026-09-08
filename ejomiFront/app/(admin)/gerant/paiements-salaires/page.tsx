@@ -46,7 +46,7 @@ export default function PaiementsSalairesPage() {
         employeService.getAll(1, 1000), // L'API employés est paginée, on charge tout pour le filtre
       ])
       // Les services retournent la réponse Axios complète
-      setPaiements(paiementsRes.data.data || paiementsRes.data || [])
+      setPaiements(paiementsRes.data.data || [])
       // La réponse des employés est paginée, on prend `data.data`
       setEmployes(employesRes.data.data || [])
     } catch (error) {
@@ -65,7 +65,7 @@ export default function PaiementsSalairesPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce paiement ?")) {
       try {
         await salairePaiementService.delete(id)

@@ -22,8 +22,9 @@ interface TransactionUpdateData {
   salairePaiementId?: number;
 }
 
-const getAllTransactions = async () => {
+const getAllTransactions = async (entrepriseId?: number) => {
   return await prisma.transaction.findMany({
+    where: entrepriseId ? { entrepriseId } : {},
     include: {
       commande: {
         include: {
@@ -178,30 +179,32 @@ const getTransactionsByDateRange = async (startDate: Date, endDate: Date) => {
   });
 };
 
-const getTransactionStatistics = async () => {
-  const [total, totalRecettes, totalDepenses, byType] = await Promise.all([
-    prisma.transaction.count(),
+const getTransactionStatistics = async (entrepriseId?: number) => {
+  const w = entrepriseId ? { entrepriseId } : {};
+  const [total, totalEntrees, totalSorties, byType] = await Promise.all([
+    prisma.transaction.count({ where: w }),
     prisma.transaction.aggregate({
-      where: { type: 'RECETTE' },
+      where: { ...w, type: 'ENTREE' },
       _sum: { montant: true },
     }),
     prisma.transaction.aggregate({
-      where: { type: 'DEPENSE' },
+      where: { ...w, type: 'SORTIE' },
       _sum: { montant: true },
     }),
     prisma.transaction.groupBy({
       by: ['type'],
+      where: w,
       _count: { id: true },
       _sum: { montant: true },
     }),
   ]);
 
-  const balance = (totalRecettes._sum.montant || 0) - (totalDepenses._sum.montant || 0);
+  const balance = (totalEntrees._sum.montant || 0) - (totalSorties._sum.montant || 0);
 
   return {
     total,
-    totalRecettes: totalRecettes._sum.montant || 0,
-    totalDepenses: totalDepenses._sum.montant || 0,
+    totalEntrees: totalEntrees._sum.montant || 0,
+    totalSorties: totalSorties._sum.montant || 0,
     balance,
     byType,
   };

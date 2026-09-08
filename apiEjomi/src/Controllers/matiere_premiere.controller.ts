@@ -1,16 +1,17 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import matierePremiereService from '../Services/matiere_premiere.service';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
-export const getAllMatieresPremieres = async (req: Request, res: Response): Promise<void> => {
+export const getAllMatieresPremieres = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const result = await matierePremiereService.getAllMatieresPremieres(req.query);
+    const result = await matierePremiereService.getAllMatieresPremieres(req.query, req.user?.entrepriseId);
     res.status(200).json({ success: true, ...result });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la r�cup�ration des mati�res premi�res', error: error.message });
   }
 };
 
-export const getMatierePremiereById = async (req: Request, res: Response): Promise<void> => {
+export const getMatierePremiereById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const matiere = await matierePremiereService.getMatierePremiereById(parseInt(id));
@@ -26,7 +27,7 @@ export const getMatierePremiereById = async (req: Request, res: Response): Promi
   }
 };
 
-export const createMatierePremiere = async (req: Request, res: Response): Promise<void> => {
+export const createMatierePremiere = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { nom, categorie, description, quantiteStock, prixAchat } = req.body;
 
@@ -53,7 +54,7 @@ export const createMatierePremiere = async (req: Request, res: Response): Promis
   }
 };
 
-export const updateMatierePremiere = async (req: Request, res: Response): Promise<void> => {
+export const updateMatierePremiere = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { nom, categorie, description, quantiteStock, prixAchat } = req.body;
@@ -77,7 +78,7 @@ export const updateMatierePremiere = async (req: Request, res: Response): Promis
   }
 };
 
-export const deleteMatierePremiere = async (req: Request, res: Response): Promise<void> => {
+export const deleteMatierePremiere = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await matierePremiereService.deleteMatierePremiere(parseInt(id));
@@ -92,7 +93,7 @@ export const deleteMatierePremiere = async (req: Request, res: Response): Promis
   }
 };
 
-export const updateMatierePremiereStock = async (req: Request, res: Response): Promise<void> => {
+export const updateMatierePremiereStock = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { quantite, operation } = req.body;
@@ -116,7 +117,7 @@ export const updateMatierePremiereStock = async (req: Request, res: Response): P
   }
 };
 
-export const getMatieresPremieresLowStock = async (req: Request, res: Response): Promise<void> => {
+export const getMatieresPremieresLowStock = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { seuil } = req.query;
     const seuilValue = seuil ? parseInt(seuil as string) : 10;
@@ -129,7 +130,7 @@ export const getMatieresPremieresLowStock = async (req: Request, res: Response):
   }
 };
 
-export const searchMatieresPremieres = async (req: Request, res: Response): Promise<void> => {
+export const searchMatieresPremieres = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { query } = req.query;
 
@@ -146,9 +147,9 @@ export const searchMatieresPremieres = async (req: Request, res: Response): Prom
   }
 };
 
-export const getMatierePremiereStatistics = async (_req: Request, res: Response): Promise<void> => {
+export const getMatierePremiereStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await matierePremiereService.getMatierePremiereStatistics();
+    const stats = await matierePremiereService.getMatierePremiereStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la r�cup�ration des statistiques', error: error.message });

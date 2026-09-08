@@ -20,8 +20,9 @@ interface CongeUpdateData {
   description?: string;
 }
 
-const getAllConges = async () => {
+const getAllConges = async (entrepriseId?: number) => {
   return await prisma.conge.findMany({
+    where: entrepriseId ? { employe: { user: { entrepriseId } } } : {},
     include: {
       employe: {
         include: {
@@ -36,7 +37,7 @@ const getAllConges = async () => {
         },
       },
     },
-    orderBy: { dateDebut: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -122,7 +123,7 @@ const getCongesByEmploye = async (employeId: number) => {
         },
       },
     },
-    orderBy: { dateDebut: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -136,7 +137,7 @@ const getCongesByStatut = async (statut: string) => {
         },
       },
     },
-    orderBy: { dateDebut: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -165,29 +166,22 @@ const getCongesByDateRange = async (startDate: Date, endDate: Date) => {
   });
 };
 
-const getCongeStatistics = async () => {
+const getCongeStatistics = async (entrepriseId?: number) => {
+  let employeIds: number[] | undefined;
+  if (entrepriseId) {
+    const employes = await prisma.employe.findMany({ where: { user: { entrepriseId } }, select: { id: true } });
+    employeIds = employes.map(e => e.id);
+  }
+  const w = employeIds ? { employeId: { in: employeIds } } : {};
+
   const [total, byStatut, byType, byEmploye] = await Promise.all([
-    prisma.conge.count(),
-    prisma.conge.groupBy({
-      by: ['statut'],
-      _count: { id: true },
-    }),
-    prisma.conge.groupBy({
-      by: ['type'],
-      _count: { id: true },
-    }),
-    prisma.conge.groupBy({
-      by: ['employeId'],
-      _count: { id: true },
-    }),
+    prisma.conge.count({ where: w }),
+    prisma.conge.groupBy({ by: ['statut'], where: w, _count: { id: true } }),
+    prisma.conge.groupBy({ by: ['type'], where: w, _count: { id: true } }),
+    prisma.conge.groupBy({ by: ['employeId'], where: w, _count: { id: true } }),
   ]);
 
-  return {
-    total,
-    byStatut,
-    byType,
-    byEmploye,
-  };
+  return { total, byStatut, byType, byEmploye };
 };
 
 export default {

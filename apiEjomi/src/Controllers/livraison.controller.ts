@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import livraisonService from '../Services/livraison.service.js';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
-export const getAllLivraisons = async (req: Request, res: Response): Promise<void> => {
+export const getAllLivraisons = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const livraisons = await livraisonService.getAllLivraisons();
+    const livraisons = await livraisonService.getAllLivraisons((req as any).user?.entrepriseId);
     res.status(200).json({ success: true, data: livraisons });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
@@ -117,9 +118,9 @@ export const getLivraisonsByStatut = async (req: Request, res: Response): Promis
   }
 };
 
-export const getLivraisonStatistics = async (req: Request, res: Response): Promise<void> => {
+export const getLivraisonStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await livraisonService.getLivraisonStatistics();
+    const stats = await livraisonService.getLivraisonStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });

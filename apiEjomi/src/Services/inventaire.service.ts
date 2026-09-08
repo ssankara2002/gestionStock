@@ -15,6 +15,7 @@ interface InventaireInput {
   lieu: LieuStock;
   commentaire?: string;
   ajustements: AjustementInput[];
+  entrepriseId?: number;
 }
 
 const ajusterStock = async (data: InventaireInput) => {
@@ -35,6 +36,7 @@ const ajusterStock = async (data: InventaireInput) => {
         statut: 'EN_COURS',
         commentaire: data.commentaire,
         employeId,
+        entrepriseId: data.entrepriseId,
       },
     });
 
@@ -118,6 +120,7 @@ const getHistoriqueInventaire = async (filters: {
   lieu?: LieuStock;
   dateDebut?: Date;
   dateFin?: Date;
+  entrepriseId?: number;
 }) => {
   const where: any = {};
 
@@ -129,8 +132,11 @@ const getHistoriqueInventaire = async (filters: {
     if (filters.dateDebut) where.dateInventaire.gte = filters.dateDebut;
     if (filters.dateFin) where.dateInventaire.lte = filters.dateFin;
   }
+  if (filters.entrepriseId) {
+    where.session = { entrepriseId: filters.entrepriseId };
+  }
 
-  return prisma.historiqueInventaire.findMany({
+  const result = await prisma.historiqueInventaire.findMany({
     where,
     include: {
       produit: true,
@@ -141,11 +147,15 @@ const getHistoriqueInventaire = async (filters: {
     },
     orderBy: { dateInventaire: 'desc' },
   });
+  return result;
 };
 
-const getSessions = async (lieu?: LieuStock) => {
+const getSessions = async (lieu?: LieuStock, entrepriseId?: number) => {
+  const where: any = {};
+  if (lieu) where.lieu = lieu;
+  if (entrepriseId) where.entrepriseId = entrepriseId;
   return prisma.sessionInventaire.findMany({
-    where: lieu ? { lieu } : undefined,
+    where: Object.keys(where).length > 0 ? where : undefined,
     include: {
       employe: { include: { user: true } },
       lignes: { include: { produit: true } },
@@ -170,7 +180,7 @@ const getSessionById = async (id: number) => {
   });
 };
 
-const getProduitsInventaire = async (lieu?: LieuStock) => {
+const getProduitsInventaire = async (lieu?: LieuStock, entrepriseId?: number) => {
   const produitSelect = {
     id: true,
     libelle: true,
@@ -178,8 +188,11 @@ const getProduitsInventaire = async (lieu?: LieuStock) => {
     prixAchatUnitaire: true,
   };
 
+  const produitWhere = entrepriseId ? { entrepriseId } : {};
+
   if (lieu === 'BOUTIQUE') {
     return prisma.stockBoutique.findMany({
+      where: entrepriseId ? { produit: produitWhere } : undefined,
       include: { produit: { select: produitSelect } },
       orderBy: { produit: { libelle: 'asc' } },
     });
@@ -187,6 +200,7 @@ const getProduitsInventaire = async (lieu?: LieuStock) => {
 
   if (lieu === 'MAGASIN') {
     return prisma.stockMagasin.findMany({
+      where: entrepriseId ? { produit: produitWhere } : undefined,
       include: { produit: { select: produitSelect } },
       orderBy: { produit: { libelle: 'asc' } },
     });
@@ -194,6 +208,7 @@ const getProduitsInventaire = async (lieu?: LieuStock) => {
 
   // Sans lieu : retourne tous les produits avec les deux stocks
   return prisma.produit.findMany({
+    where: produitWhere,
     select: {
       id: true,
       libelle: true,
@@ -206,21 +221,36 @@ const getProduitsInventaire = async (lieu?: LieuStock) => {
   });
 };
 
-const getStatistiquesInventaire = async (lieu?: LieuStock) => {
-  const where = lieu ? { lieuInventaire: lieu } : {};
+const getStatistiquesInventaire = async (lieu?: LieuStock, entrepriseId?: number) => {
+  const whereHist: any = {};
+  if (lieu) whereHist.lieuInventaire = lieu;
+  if (entrepriseId) whereHist.session = { entrepriseId };
+
+  const whereSession: any = {};
+  if (lieu) whereSession.lieu = lieu;
+  if (entrepriseId) whereSession.entrepriseId = entrepriseId;
+
+  // Résoudre les produitIds pour éviter colonnes ambiguës dans groupBy
+  let produitIds: number[] | undefined;
+  if (entrepriseId) {
+    const ps = await prisma.produit.findMany({ where: { entrepriseId }, select: { id: true } });
+    produitIds = ps.map(p => p.id);
+  }
+  const whereHistGroupBy: any = { ...whereHist };
+  if (produitIds) whereHistGroupBy.produitId = { in: produitIds };
 
   const [totalAjustements, ecartParProduit, sessionsParStatut] = await prisma.$transaction([
-    prisma.historiqueInventaire.count({ where }),
+    prisma.historiqueInventaire.count({ where: whereHistGroupBy }),
     prisma.historiqueInventaire.groupBy({
       by: ['produitId'],
-      where,
+      where: whereHistGroupBy,
       _sum: { ecart: true },
       _count: { id: true },
       orderBy: { _sum: { ecart: 'desc' } },
     }),
     prisma.sessionInventaire.groupBy({
       by: ['statut'],
-      where: lieu ? { lieu } : {},
+      where: whereSession,
       _count: { id: true },
       orderBy: { _count: { statut: 'desc' } },
     }),

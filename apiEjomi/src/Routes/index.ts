@@ -26,6 +26,8 @@ import livraisonRoutes from './livraison.route';
 import paiementRoutes from './paiement.route';
 import salairePaiementRoutes from './salaire-paiement.routes';
 import transfertRoutes from './transfert.route';
+import lotRoutes from './lot.route';
+import bilanRoutes from './bilan.route';
 
 const router = Router();
 
@@ -57,6 +59,8 @@ router.use('/livraisons', livraisonRoutes);
 router.use('/paiements', paiementRoutes);
 router.use('/salaire-paiements', salairePaiementRoutes);
 router.use('/transferts', transfertRoutes);
+router.use('/lots', lotRoutes);
+router.use('/bilan', bilanRoutes);
 
 // Health check route
 router.get('/health', (req, res) => {

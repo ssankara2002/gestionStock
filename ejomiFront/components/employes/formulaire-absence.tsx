@@ -1,7 +1,8 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import Select from "react-select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +13,8 @@ import { useToast } from "@/hooks/use-toast"
 import { employesService } from "@/services"
 import type { AbsenceCreateData, Absence } from "@/types/absence"
 import type { Employe } from "@/types"
+import { absenceSchema, type AbsenceFormValues } from "@/lib/validations"
+import { useState } from "react"
 
 interface FormulaireAbsenceProps {
   employeId: number
@@ -20,90 +23,76 @@ interface FormulaireAbsenceProps {
 }
 
 export function FormulaireAbsence({ employeId, absence, onAbsenceEnregistree }: FormulaireAbsenceProps) {
-  const getTodayDate = () => new Date().toISOString().split("T")[0]
-
-  const [date, setDate] = useState(getTodayDate())
-  const [selectedEmployeId, setSelectedEmployeId] = useState<string>(employeId > 0 ? String(employeId) : "")
   const [employes, setEmployes] = useState<Employe[]>([])
-  const [motif, setMotif] = useState("")
-  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AbsenceFormValues>({
+    resolver: zodResolver(absenceSchema),
+    defaultValues: {
+      employeId: employeId > 0 ? employeId : undefined,
+      date: new Date().toISOString().split("T")[0],
+      motif: "",
+    },
+  })
+
+  const selectedEmployeId = watch("employeId")
 
   useEffect(() => {
     if (absence) {
-      if ((absence as any).date) setDate((absence as any).date.split("T")[0])
-      setMotif(absence.motif)
-      if (absence.employeId) setSelectedEmployeId(String(absence.employeId))
+      reset({
+        employeId: absence.employeId ? Number(absence.employeId) : (employeId > 0 ? employeId : undefined),
+        date: (absence as any).date ? (absence as any).date.split("T")[0] : new Date().toISOString().split("T")[0],
+        motif: absence.motif ?? "",
+      })
     } else {
-      resetForm()
+      reset({
+        employeId: employeId > 0 ? employeId : undefined,
+        date: new Date().toISOString().split("T")[0],
+        motif: "",
+      })
     }
-  }, [absence])
+  }, [absence, employeId, reset])
 
   useEffect(() => {
-    const loadEmployes = async () => {
-      try {
-        const response = await employesService.getAll(1, 1000)
-        const loadedEmployes = response.data.data || []
-        setEmployes(loadedEmployes)
-      } catch (err) {
-        console.error("Impossible de charger la liste des employés", err)
-        toast({ title: "Erreur", description: "Impossible de charger les employés.", variant: "destructive" })
-      }
-    }
-    loadEmployes()
+    employesService.getAll(1, 1000).then((res) => {
+      setEmployes(res.data.data || [])
+    }).catch(() => {
+      toast({ title: "Erreur", description: "Impossible de charger les employés.", variant: "destructive" })
+    })
   }, [toast])
 
-  const resetForm = () => {
-    setDate(getTodayDate())
-    setMotif("")
-    if (employeId <= 0) setSelectedEmployeId("")
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!date || !motif || !selectedEmployeId) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      setLoading(true)
-      const data: AbsenceCreateData = {
-        employeId: Number(selectedEmployeId),
-        date,
-        motif,
-      }
-
-      onAbsenceEnregistree(data)
-
-      if (!absence) resetForm()
-    } catch (error: any) {
-      console.error("Erreur lors de l'enregistrement de l'absence:", error)
-      toast({
-        title: "Erreur",
-        description: error?.message || "Impossible d'enregistrer l'absence",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const employeOptions = useMemo(
-    () =>
-      employes.map((e) => ({
-        value: String(e.id),
-        label: e.user ? `${e.user.prenom} ${e.user.nom}` : `Employé ${e.id}`,
-      })),
+    () => employes.map((e) => ({
+      value: e.id,
+      label: e.user ? `${e.user.prenom} ${e.user.nom}` : `Employé ${e.id}`,
+    })),
     [employes]
   )
 
-  const selectedEmployeOption = employeOptions.find((opt) => opt.value === selectedEmployeId) || null
+  const selectedEmployeOption = employeOptions.find((opt) => opt.value === selectedEmployeId) ?? null
+
+  const onSubmit = (data: AbsenceFormValues) => {
+    const payload: AbsenceCreateData = {
+      employeId: data.employeId,
+      date: data.date,
+      motif: data.motif ?? "",
+    }
+    onAbsenceEnregistree(payload)
+    if (!absence) {
+      reset({
+        employeId: employeId > 0 ? employeId : undefined,
+        date: new Date().toISOString().split("T")[0],
+        motif: "",
+      })
+    }
+  }
 
   return (
     <Card>
@@ -114,53 +103,51 @@ export function FormulaireAbsence({ employeId, absence, onAbsenceEnregistree }: 
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Sélecteur Employé */}
             <div className="space-y-2">
-              <Label htmlFor="employe">Employé</Label>
+              <Label htmlFor="employe">Employé <span className="text-red-500">*</span></Label>
               <Select
                 id="employe"
                 isDisabled={employeId > 0}
                 options={employeOptions}
                 value={selectedEmployeOption}
-                onChange={(option) => setSelectedEmployeId(option?.value || "")}
+                onChange={(option) => setValue("employeId", option?.value ?? (undefined as any), { shouldValidate: true })}
                 placeholder="Sélectionner un employé..."
                 isSearchable
                 className="text-sm"
                 styles={{
                   control: (base) => ({
                     ...base,
-                    borderColor: "#d1d5db",
+                    borderColor: errors.employeId ? "#ef4444" : "#d1d5db",
                     borderRadius: "0.5rem",
                     minHeight: "42px",
                   }),
                 }}
               />
+              {errors.employeId && <p className="text-sm text-red-500">{errors.employeId.message}</p>}
             </div>
 
-            {/* Date */}
-            <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+            <div className="space-y-2">
+              <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
+              <Input id="date" type="date" {...register("date")} />
+              {errors.date && <p className="text-sm text-red-500">{errors.date.message}</p>}
             </div>
           </div>
 
-          {/* Motif */}
           <div className="space-y-2">
-            <Label htmlFor="motif">Motif</Label>
+            <Label htmlFor="motif">Motif <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
             <Textarea
               id="motif"
-              value={motif}
-              onChange={(e) => setMotif(e.target.value)}
+              {...register("motif")}
               placeholder="Raison de l'absence..."
               rows={3}
-              required
             />
+            {errors.motif && <p className="text-sm text-red-500">{errors.motif.message}</p>}
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Enregistrement..." : absence ? "Modifier l'absence" : "Enregistrer l'absence"}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Enregistrement..." : absence ? "Modifier l'absence" : "Enregistrer l'absence"}
           </Button>
         </form>
       </CardContent>

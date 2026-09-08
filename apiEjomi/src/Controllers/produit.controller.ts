@@ -4,7 +4,10 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
 export const getAllProduits = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const produits = await produitService.getAllProduits(req.user?.entrepriseId);
+    // Priorité : token (espace admin) > query param (vitrine publique)
+    const entrepriseId = req.user?.entrepriseId
+      ?? (req.query.entrepriseId ? parseInt(req.query.entrepriseId as string, 10) : undefined);
+    const produits = await produitService.getAllProduits(entrepriseId);
     res.status(200).json({ success: true, data: produits });
   } catch (error: any) {
     console.error('ERREUR getAllProduits:', error.message, error.code, error.meta);
@@ -12,10 +15,10 @@ export const getAllProduits = async (req: AuthenticatedRequest, res: Response): 
   }
 };
 
-export const getProduitById = async (req: Request, res: Response): Promise<void> => {
+export const getProduitById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
-    const produit = await produitService.getProduitById(id);
+    const produit = await produitService.getProduitById(id, req.user?.entrepriseId);
     if (produit) {
       res.status(200).json({ success: true, data: produit });
     } else {
@@ -63,9 +66,14 @@ export const createProduit = async (req: AuthenticatedRequest, res: Response): P
   }
 };
 
-export const updateProduit = async (req: Request, res: Response): Promise<void> => {
+export const updateProduit = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
+    const existing = await produitService.getProduitById(id, req.user?.entrepriseId);
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Produit non trouvé' });
+      return;
+    }
     const body = req.body;
     const data: { [key: string]: any } = {};
     
@@ -77,6 +85,8 @@ export const updateProduit = async (req: Request, res: Response): Promise<void> 
 
     if (req.file) {
       data.image = req.file.filename;
+    } else if (body.imageUrl) {
+      data.image = body.imageUrl;
     }
     if (Object.keys(data).length === 0) {
       res.status(400).json({ success: false, message: 'Aucune donnée fournie pour la mise à jour.' });
@@ -98,9 +108,14 @@ export const updateProduit = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const deleteProduit = async (req: Request, res: Response): Promise<void> => {
+export const deleteProduit = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
+    const existing = await produitService.getProduitById(id, req.user?.entrepriseId);
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Produit non trouvé' });
+      return;
+    }
     await produitService.deleteProduit(id);
     res.status(200).json({ success: true, message: 'Produit supprimé avec succès' });
   } catch (error: any) {
@@ -114,33 +129,43 @@ export const updateProduitStock = async (req: Request, res: Response): Promise<v
 
 // Fonction supprimée car categorie n'existe plus
 
-export const getLowStockProduits = async (req: Request, res: Response): Promise<void> => {
+export const getLowStockProduits = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const seuil = req.query.seuil ? parseInt(req.query.seuil as string, 10) : 10;
-    const produits = await produitService.getLowStockProduits(seuil);
+    const produits = await produitService.getLowStockProduits(seuil, req.user?.entrepriseId);
     res.status(200).json({ success: true, data: produits });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
   }
 };
 
-export const searchProduits = async (req: Request, res: Response): Promise<void> => {
+export const searchProduits = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const query = req.query.q as string;
     if (!query) {
       res.status(400).json({ success: false, message: 'Le paramètre de recherche "q" est requis.' });
       return;
     }
-    const produits = await produitService.searchProduits(query);
+    const produits = await produitService.searchProduits(query, req.user?.entrepriseId);
     res.status(200).json({ success: true, data: produits });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
   }
 };
 
-export const getProduitStatistics = async (req: Request, res: Response): Promise<void> => {
+export const getProduitsProchesPeremption = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await produitService.getProduitStatistics();
+    const jours = req.query.jours ? parseInt(req.query.jours as string, 10) : 30;
+    const produits = await produitService.getProduitsProchesPeremption(req.user?.entrepriseId, jours);
+    res.status(200).json({ success: true, data: produits });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
+  }
+};
+
+export const getProduitStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const stats = await produitService.getProduitStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });

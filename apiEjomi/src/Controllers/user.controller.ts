@@ -6,16 +6,17 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
 const prisma = new PrismaClient();
 
-export const getOrCreateClientAnonyme = async (_req: Request, res: Response): Promise<void> => {
+export const getOrCreateClientAnonyme = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const clientRole = await prisma.role.findFirst({ where: { name: 'CLIENT' } });
+    const entrepriseId = (_req as any).user?.entrepriseId;
+    const clientRole = await prisma.role.findFirst({ where: { name: 'CLIENT', ...(entrepriseId ? { entrepriseId } : {}) } });
     if (!clientRole) {
       res.status(500).json({ success: false, message: "Rôle CLIENT introuvable." });
       return;
     }
 
     let client = await prisma.user.findFirst({
-      where: { tel: '0000000000', roleId: clientRole.id },
+      where: { tel: '0000000000', roleId: clientRole.id, ...(entrepriseId ? { entrepriseId } : {}) },
     });
 
     if (!client) {
@@ -26,6 +27,7 @@ export const getOrCreateClientAnonyme = async (_req: Request, res: Response): Pr
           tel: '0000000000',
           adresse: '-',
           roleId: clientRole.id,
+          ...(entrepriseId ? { entrepriseId } : {}),
         },
       });
     }
@@ -36,17 +38,22 @@ export const getOrCreateClientAnonyme = async (_req: Request, res: Response): Pr
   }
 };
 
-export const getAllUsersController = async (req: Request, res: Response): Promise<void> => {
+export const getAllUsersController = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { skip, take, page, limit } = getPaginationParams(req.query);
     const { role } = req.query;
 
     // Construire le filtre basé sur le rôle si fourni
     let whereClause: any = {};
+    if (req.user?.entrepriseId) {
+      whereClause.entrepriseId = req.user.entrepriseId;
+    }
     if (role && typeof role === 'string') {
-      // Chercher le rôle par son nom
       const roleRecord = await prisma.role.findFirst({
-        where: { name: role.toUpperCase() }
+        where: {
+          name: role.toUpperCase(),
+          ...(req.user?.entrepriseId ? { entrepriseId: req.user.entrepriseId } : {}),
+        }
       });
 
       if (roleRecord) {
@@ -62,7 +69,7 @@ export const getAllUsersController = async (req: Request, res: Response): Promis
         include: {
           role: true,
         },
-        orderBy: { nom: 'asc' },
+        orderBy: { updatedAt: 'desc' },
       }),
       prisma.user.count({ where: whereClause }),
     ]);
@@ -90,18 +97,24 @@ export const getUserByIdController = async (req: Request, res: Response): Promis
   }
 };
 
-export const createUserController = async (req: Request, res: Response): Promise<void> => {
+export const createUserController = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { nom, prenom, email, tel, adresse, password } = req.body;
 
-    if (!nom || !prenom || !tel || !adresse) {
-      res.status(400).json({ success: false, message: 'Les champs nom, prenom, tel et adresse sont obligatoires' });
+    if (!nom || !prenom || !adresse) {
+      res.status(400).json({ success: false, message: 'Les champs nom, prénom et adresse sont obligatoires' });
+      return;
+    }
+    if (!email && !tel) {
+      res.status(400).json({ success: false, message: 'Un email ou un numéro de téléphone est requis' });
       return;
     }
 
-    // Récupérer le rôle CLIENT
+    const entrepriseId = (req as any).user?.entrepriseId;
+
+    // Récupérer le rôle CLIENT de cette entreprise
     const clientRole = await prisma.role.findFirst({
-      where: { name: 'CLIENT' }
+      where: { name: 'CLIENT', ...(entrepriseId ? { entrepriseId } : {}) }
     });
 
     if (!clientRole) {
@@ -117,6 +130,7 @@ export const createUserController = async (req: Request, res: Response): Promise
       adresse,
       password: password || undefined,
       roleId: clientRole.id,
+      entrepriseId: entrepriseId || undefined,
     };
 
     const newUser = await userService.createUser(userData);
@@ -129,7 +143,7 @@ export const createUserController = async (req: Request, res: Response): Promise
   } catch (error: any) {
     console.error("Erreur lors de la création du client:", error);
     if (error.code === 'P2002') {
-      res.status(400).json({ success: false, message: 'Email ou téléphone déjà existant' });
+      res.status(400).json({ success: false, message: 'Un client avec cet email ou ce téléphone existe déjà dans cette entreprise' });
     } else {
       res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
     }

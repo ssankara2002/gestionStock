@@ -1,11 +1,12 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { ArrowLeft, Save } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,58 +16,34 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Footer } from "@/components/layout/footer"
 import { clientService } from "@/services"
+import { clientSchema, type ClientFormValues } from "@/lib/validations"
 
 export default function NouveauClientPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // État pour stocker les données du formulaire
-  const [formData, setFormData] = useState({
-    nom: "",
-    prenom: "",
-    email: "",
-    tel: "",
-    adresse: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ClientFormValues>({
+    resolver: zodResolver(clientSchema),
+    defaultValues: { nom: "", prenom: "", email: "", tel: "", adresse: "" },
   })
 
-  // Mettre à jour les données du formulaire
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData({
-      ...formData,
-      [name]: value,
-    })
-  }
-
-  // Soumettre le formulaire
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: ClientFormValues) => {
     setIsSubmitting(true)
-
     try {
-      // Validation
-      if (!formData.nom || !formData.prenom || !formData.tel || !formData.adresse) {
-        throw new Error("Le nom, prénom, téléphone et adresse sont obligatoires")
-      }
-
-      // Validation de l'email si fourni
-      if (formData.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(formData.email)) {
-          throw new Error("L'adresse email n'est pas valide")
-        }
-      }
-
-      await clientService.create(formData)
-
+      await clientService.create(data)
+      await queryClient.refetchQueries({ queryKey: ['clients'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       toast({
         title: "Client ajouté",
-        description: `Le client ${formData.prenom} ${formData.nom} a été ajouté avec succès`,
+        description: `Le client ${data.prenom} ${data.nom} a été ajouté avec succès`,
       })
-
       router.push("/vendeur/clients")
-      router.refresh()
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -103,75 +80,40 @@ export default function NouveauClientPage() {
               <CardDescription>Ajoutez un nouveau client à votre base de données</CardDescription>
             </CardHeader>
             <CardContent>
-              <form id="client-form" onSubmit={handleSubmit} className="space-y-6">
+              <form id="client-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="nom" className="required">
-                      Nom
-                    </Label>
-                    <Input
-                      id="nom"
-                      name="nom"
-                      value={formData.nom}
-                      onChange={handleChange}
-                      placeholder="Nom du client"
-                      required
-                    />
+                    <Label htmlFor="nom">Nom <span className="text-red-500">*</span></Label>
+                    <Input id="nom" placeholder="Nom du client" {...register("nom")} />
+                    {errors.nom && <p className="text-sm text-red-500 mt-1">{errors.nom.message}</p>}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="prenom" className="required">
-                      Prénom
-                    </Label>
-                    <Input
-                      id="prenom"
-                      name="prenom"
-                      value={formData.prenom}
-                      onChange={handleChange}
-                      placeholder="Prénom du client"
-                      required
-                    />
+                    <Label htmlFor="prenom">Prénom <span className="text-red-500">*</span></Label>
+                    <Input id="prenom" placeholder="Prénom du client" {...register("prenom")} />
+                    {errors.prenom && <p className="text-sm text-red-500 mt-1">{errors.prenom.message}</p>}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="email@example.com"
-                    />
+                    <Label htmlFor="email">
+                      Email <span className="text-muted-foreground text-xs">(requis si pas de téléphone)</span>
+                    </Label>
+                    <Input id="email" type="email" placeholder="email@example.com" {...register("email")} />
+                    {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tel" className="required">
-                      Téléphone
+                    <Label htmlFor="tel">
+                      Téléphone <span className="text-muted-foreground text-xs">(requis si pas d'email)</span>
                     </Label>
-                    <Input
-                      id="tel"
-                      name="tel"
-                      value={formData.tel}
-                      onChange={handleChange}
-                      placeholder="Numéro de téléphone"
-                      required
-                    />
+                    <Input id="tel" placeholder="Ex: +226 70 00 00 00" {...register("tel")} />
+                    {errors.tel && <p className="text-sm text-red-500 mt-1">{errors.tel.message}</p>}
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="adresse" className="required">
-                      Adresse
-                    </Label>
-                    <Textarea
-                      id="adresse"
-                      name="adresse"
-                      value={formData.adresse}
-                      onChange={handleChange}
-                      placeholder="Adresse complète"
-                      rows={3}
-                      required
-                    />
+                    <Label htmlFor="adresse">Adresse <span className="text-red-500">*</span></Label>
+                    <Textarea id="adresse" placeholder="Adresse complète" rows={3} {...register("adresse")} />
+                    {errors.adresse && <p className="text-sm text-red-500 mt-1">{errors.adresse.message}</p>}
                   </div>
                 </div>
 

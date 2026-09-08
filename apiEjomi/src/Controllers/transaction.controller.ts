@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import transactionService from '../Services/transaction.service';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
-export const getAllTransactions = async (req: Request, res: Response): Promise<void> => {
+export const getAllTransactions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const transactions = await transactionService.getAllTransactions();
+    const transactions = await transactionService.getAllTransactions(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: transactions });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Erreur lors de la récupération des transactions', error: error.message });
+    res.status(500).json({ success: false, message: 'Erreur lors de la rï¿½cupï¿½ration des transactions', error: error.message });
   }
 };
 
@@ -22,7 +23,7 @@ export const getTransactionById = async (req: Request, res: Response): Promise<v
 
     res.status(200).json({ success: true, data: transaction });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Erreur lors de la récupération de la transaction', error: error.message });
+    res.status(500).json({ success: false, message: 'Erreur lors de la rï¿½cupï¿½ration de la transaction', error: error.message });
   }
 };
 
@@ -47,9 +48,9 @@ export const createTransaction = async (req: Request, res: Response): Promise<vo
 
     const transaction = await transactionService.createTransaction(transactionData);
 
-    res.status(201).json({ success: true, message: 'Transaction créée avec succès', data: transaction });
+    res.status(201).json({ success: true, message: 'Transaction crï¿½ï¿½e avec succï¿½s', data: transaction });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Erreur lors de la création de la transaction', error: error.message });
+    res.status(500).json({ success: false, message: 'Erreur lors de la crï¿½ation de la transaction', error: error.message });
   }
 };
 
@@ -69,12 +70,12 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
 
     const transaction = await transactionService.updateTransaction(parseInt(id), transactionData);
 
-    res.status(200).json({ success: true, message: 'Transaction mise à jour avec succès', data: transaction });
+    res.status(200).json({ success: true, message: 'Transaction mise ï¿½ jour avec succï¿½s', data: transaction });
   } catch (error: any) {
     if (error.code === 'P2025') {
       res.status(404).json({ success: false, message: 'Transaction introuvable' });
     } else {
-      res.status(500).json({ success: false, message: 'Erreur lors de la mise à jour de la transaction', error: error.message });
+      res.status(500).json({ success: false, message: 'Erreur lors de la mise ï¿½ jour de la transaction', error: error.message });
     }
   }
 };
@@ -84,7 +85,7 @@ export const deleteTransaction = async (req: Request, res: Response): Promise<vo
     const { id } = req.params;
     await transactionService.deleteTransaction(parseInt(id));
 
-    res.status(200).json({ success: true, message: 'Transaction supprimée avec succès' });
+    res.status(200).json({ success: true, message: 'Transaction supprimï¿½e avec succï¿½s' });
   } catch (error: any) {
     if (error.code === 'P2025') {
       res.status(404).json({ success: false, message: 'Transaction introuvable' });
@@ -101,7 +102,7 @@ export const getTransactionsByType = async (req: Request, res: Response): Promis
 
     res.status(200).json({ success: true, data: transactions });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Erreur lors de la récupération des transactions', error: error.message });
+    res.status(500).json({ success: false, message: 'Erreur lors de la rï¿½cupï¿½ration des transactions', error: error.message });
   }
 };
 
@@ -110,7 +111,7 @@ export const getTransactionsByDateRange = async (req: Request, res: Response): P
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
-      res.status(400).json({ success: false, message: 'Les paramètres startDate et endDate sont obligatoires' });
+      res.status(400).json({ success: false, message: 'Les paramï¿½tres startDate et endDate sont obligatoires' });
       return;
     }
 
@@ -121,15 +122,15 @@ export const getTransactionsByDateRange = async (req: Request, res: Response): P
 
     res.status(200).json({ success: true, data: transactions });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Erreur lors de la récupération des transactions', error: error.message });
+    res.status(500).json({ success: false, message: 'Erreur lors de la rï¿½cupï¿½ration des transactions', error: error.message });
   }
 };
 
-export const getTransactionStatistics = async (req: Request, res: Response): Promise<void> => {
+export const getTransactionStatistics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const stats = await transactionService.getTransactionStatistics();
+    const stats = await transactionService.getTransactionStatistics(req.user?.entrepriseId);
     res.status(200).json({ success: true, data: stats });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Erreur lors de la récupération des statistiques', error: error.message });
+    res.status(500).json({ success: false, message: 'Erreur lors de la rï¿½cupï¿½ration des statistiques', error: error.message });
   }
 };

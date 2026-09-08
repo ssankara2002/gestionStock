@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { SalairePaiement } from "@/types/salairePaiement"
+import type { Employe } from "@/types"
 import { useToast } from "@/hooks/use-toast"
 import { salairePaiementService } from "@/services/salaire-paiement-service"
 import { FormulaireSalaire } from "./formulaire-salaire"
@@ -16,9 +17,10 @@ import { BulletinSalaire } from "./bulletin-salaire"
 interface ListeSalairesProps {
   employeId: number
   employeSalaire: number
+  employe?: Employe
 }
 
-export function ListeSalaires({ employeId, employeSalaire }: ListeSalairesProps) {
+export function ListeSalaires({ employeId, employeSalaire, employe }: ListeSalairesProps) {
   const { toast } = useToast()
   const [salaires, setSalaires] = useState<SalairePaiement[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,7 +48,7 @@ export function ListeSalaires({ employeId, employeSalaire }: ListeSalairesProps)
     fetchSalaires()
   }, [employeId])
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string | number) => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer ce paiement ?")) return
 
     try {
@@ -99,7 +101,10 @@ export function ListeSalaires({ employeId, employeSalaire }: ListeSalairesProps)
 
   return (
     <div className="space-y-6">
-      <FormulaireSalaire employeId={employeId} salaireBase={employeSalaire} onSalaireEnregistre={fetchSalaires} />
+      <FormulaireSalaire
+        employes={employe ? [employe] : []}
+        onPaiementCreated={fetchSalaires}
+      />
 
       <div className="rounded-md border">
         <Table>
@@ -107,10 +112,8 @@ export function ListeSalaires({ employeId, employeSalaire }: ListeSalairesProps)
             <TableRow>
               <TableHead>Période</TableHead>
               <TableHead>Date de paiement</TableHead>
-              <TableHead className="text-right">Heures travaillées</TableHead>
-              <TableHead className="text-right">Heures sup.</TableHead>
-              <TableHead className="text-right">Avances</TableHead>
-              <TableHead className="text-right">Retenues</TableHead>
+              <TableHead className="text-right">Avantages</TableHead>
+              <TableHead className="text-right">Indemnités</TableHead>
               <TableHead className="text-right">Montant net</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -118,7 +121,7 @@ export function ListeSalaires({ employeId, employeSalaire }: ListeSalairesProps)
           <TableBody>
             {salaires.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Aucun paiement enregistré
                 </TableCell>
               </TableRow>
@@ -126,16 +129,14 @@ export function ListeSalaires({ employeId, employeSalaire }: ListeSalairesProps)
               salaires.map((salaire) => (
                 <TableRow key={salaire.id}>
                   <TableCell className="font-medium">
-                    {getMoisNom(salaire.mois)} {salaire.annee}
+                    {salaire.periode ?? "-"}
                   </TableCell>
-                  <TableCell>{format(new Date(salaire.date), "dd MMM yyyy", { locale: fr })}</TableCell>
-                  <TableCell className="text-right">{salaire.heuresTravailler || "-"}</TableCell>
-                  <TableCell className="text-right">{salaire.heuresSupplementaires || "-"}</TableCell>
+                  <TableCell>{salaire.datePaiement ? format(new Date(salaire.datePaiement), "dd MMM yyyy", { locale: fr }) : "-"}</TableCell>
                   <TableCell className="text-right">
-                    {salaire.avances ? `${salaire.avances.toLocaleString()} FCFA` : "-"}
+                    {salaire.avantage ? `${salaire.avantage.toLocaleString()} FCFA` : "-"}
                   </TableCell>
                   <TableCell className="text-right">
-                    {salaire.retenues ? `${salaire.retenues.toLocaleString()} FCFA` : "-"}
+                    {salaire.indemnite ? `${salaire.indemnite.toLocaleString()} FCFA` : "-"}
                   </TableCell>
                   <TableCell className="text-right font-bold text-green-600">
                     {salaire.montant.toLocaleString()} FCFA

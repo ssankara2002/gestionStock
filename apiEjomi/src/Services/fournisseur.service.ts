@@ -112,18 +112,15 @@ const searchFournisseurs = async (query: string) => {
   });
 };
 
-const getFournisseurStatistics = async () => {
+const getFournisseurStatistics = async (entrepriseId?: number) => {
+  const w = entrepriseId ? { entrepriseId } : {};
+
   const [total, totalApprovisionnements, topFournisseurs] = await Promise.all([
-    prisma.fournisseur.count(),
-    prisma.approvisionnement.count(),
+    prisma.fournisseur.count({ where: w }),
+    prisma.approvisionnement.count({ where: w }),
     prisma.fournisseur.findMany({
-      include: {
-        approvisionnements: {
-          select: {
-            montant: true,
-          },
-        },
-      },
+      where: w,
+      include: { approvisionnements: { where: w, select: { montant: true } } },
     }),
   ]);
 
@@ -135,11 +132,7 @@ const getFournisseurStatistics = async () => {
     totalMontant: f.approvisionnements.reduce((sum: number, a: any) => sum + a.montant, 0),
   })).sort((a: any, b: any) => b.totalMontant - a.totalMontant).slice(0, 5);
 
-  return {
-    total,
-    totalApprovisionnements,
-    topFournisseurs: fournisseurStats,
-  };
+  return { total, totalApprovisionnements, topFournisseurs: fournisseurStats };
 };
 
 export default {

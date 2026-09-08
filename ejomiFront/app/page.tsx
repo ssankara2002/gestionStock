@@ -11,6 +11,7 @@ import { HomeHeader } from "@/components/layout/home-header"
 import { produitService } from "@/services"
 import { entrepriseService } from "@/services/entreprise-service"
 import type { Produit } from "@/types/produit"
+import { useAuth } from "@/context/auth-provider"
 
 interface EntrepriseConfig {
   id: number
@@ -47,10 +48,16 @@ const DEFAULTS: EntrepriseConfig = {
   ctaSousTitre: "Créez votre espace entreprise et gérez votre stock dès aujourd'hui.",
 }
 
+const CLIENT_ROLES = ["CLIENT"]
+
 export default function Home() {
+  const { user, isAuthenticated } = useAuth()
   const [featuredProducts, setFeaturedProducts] = useState<Produit[]>([])
   const [loading, setLoading] = useState(true)
   const [config, setConfig] = useState<EntrepriseConfig>(DEFAULTS)
+
+  const showDashboardBtn =
+    isAuthenticated && user?.role?.name && !CLIENT_ROLES.includes(user.role.name)
 
   useEffect(() => {
     const entrepriseId = typeof window !== "undefined" ? localStorage.getItem("entrepriseId") : null
@@ -99,9 +106,11 @@ export default function Home() {
                 <Button asChild size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10">
                   <Link href="/contact">Nous contacter</Link>
                 </Button>
-                <Button asChild size="lg" variant="secondary">
-                  <Link href="/gerant/dashboard">Tableau de bord</Link>
-                </Button>
+                {showDashboardBtn && (
+                  <Button asChild size="lg" variant="secondary">
+                    <Link href="/gerant/dashboard">Tableau de bord</Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -149,7 +158,9 @@ export default function Home() {
             ) : (
               <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                 {featuredProducts.map((product) => {
-                  const imageUrl = product.image ? `${baseUrl}/uploads/${product.image}` : "/placeholder.svg?height=300&width=400"
+                  const imageUrl = product.image
+                    ? (product.image.startsWith("http") ? product.image : `${baseUrl}/uploads/${product.image}`)
+                    : "/placeholder.svg?height=300&width=400"
                   return (
                     <Card key={product.id} className="card-product overflow-hidden">
                       <div className="aspect-[4/3] w-full relative">
@@ -168,7 +179,7 @@ export default function Home() {
         </section>
 
         {/* CTA */}
-        <section className="bg-primary py-16 md:py-24">
+        {/* <section className="bg-primary py-16 md:py-24">
           <div className="container flex flex-col items-center text-center">
             <h2 className="font-playfair text-3xl font-bold text-black md:text-4xl">{config.ctaTitre}</h2>
             <p className="mt-4 max-w-2xl text-lg text-black/80">{config.ctaSousTitre}</p>
@@ -176,7 +187,7 @@ export default function Home() {
               <Link href="/auth/register">Créer mon espace entreprise</Link>
             </Button>
           </div>
-        </section>
+        </section> */}
       </main>
 
       <Footer facebook={config.facebook} instagram={config.instagram} twitter={config.twitter} nom={config.nom} />
