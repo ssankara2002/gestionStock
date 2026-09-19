@@ -60,10 +60,10 @@ const permissions = [
   { key: 'paiement.delete', description: 'Supprimer un paiement' },
 
   // Livraison permissions
-  { key: 'livraison.read', description: 'Voir les livraisons' },
-  { key: 'livraison.create', description: 'Créer une livraison' },
-  { key: 'livraison.update', description: 'Modifier une livraison' },
-  { key: 'livraison.delete', description: 'Supprimer une livraison' },
+  // { key: 'livraison.read', description: 'Voir les livraisons' },
+  // { key: 'livraison.create', description: 'Créer une livraison' },
+  // { key: 'livraison.update', description: 'Modifier une livraison' },
+  // { key: 'livraison.delete', description: 'Supprimer une livraison' },
 
   // Fournisseur permissions
   { key: 'fournisseur.read', description: 'Voir les fournisseurs' },
@@ -78,16 +78,16 @@ const permissions = [
   { key: 'approvisionnement.delete', description: 'Supprimer un approvisionnement' },
 
   // Production permissions
-  { key: 'production.read', description: 'Voir les productions' },
-  { key: 'production.create', description: 'Créer une production' },
-  { key: 'production.update', description: 'Modifier une production' },
-  { key: 'production.delete', description: 'Supprimer une production' },
+  // { key: 'production.read', description: 'Voir les productions' },
+  // { key: 'production.create', description: 'Créer une production' },
+  // { key: 'production.update', description: 'Modifier une production' },
+  // { key: 'production.delete', description: 'Supprimer une production' },
 
   // Matiere Premiere permissions
-  { key: 'matiere_premiere.read', description: 'Voir les matières premières' },
-  { key: 'matiere_premiere.create', description: 'Créer une matière première' },
-  { key: 'matiere_premiere.update', description: 'Modifier une matière première' },
-  { key: 'matiere_premiere.delete', description: 'Supprimer une matière première' },
+  // { key: 'matiere_premiere.read', description: 'Voir les matières premières' },
+  // { key: 'matiere_premiere.create', description: 'Créer une matière première' },
+  // { key: 'matiere_premiere.update', description: 'Modifier une matière première' },
+  // { key: 'matiere_premiere.delete', description: 'Supprimer une matière première' },
 
   // Inventaire permissions
   { key: 'inventaire.read', description: 'Voir les inventaires' },
@@ -112,8 +112,6 @@ const permissions = [
   { key: 'salaire.create', description: 'Créer un salaire' },
   { key: 'salaire.update', description: 'Modifier un salaire' },
   { key: 'salaire.delete', description: 'Supprimer un salaire' },
-
-  // Dashboard permissions
   { key: 'dashboard.read', description: 'Voir le tableau de bord' },
 ];
 

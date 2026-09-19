@@ -9,6 +9,7 @@
     "build": "npx prisma generate",
     "start:prod": "tsx index.ts",
     "seed": "tsx prisma/seed.ts",
+    "seed:production": "tsx prisma/seed-production.ts",
     "seed:data": "tsx prisma/seed-data.ts"
   },
   "keywords": [],

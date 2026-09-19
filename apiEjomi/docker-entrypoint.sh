@@ -24,8 +24,11 @@ done
 echo "🔧 Génération du client Prisma..."
 npx prisma generate
 
-echo "🌱 Exécution du seeder..."
-npx tsx prisma/seed.ts || echo "⚠️  Seeder ignoré (données déjà présentes ou erreur)"
+echo "🌱 Exécution du seed de production..."
+if ! npx tsx prisma/seed-production.ts; then
+  echo "❌ Seed de production échoué, arrêt de l'API"
+  exit 1
+fi
 
 echo "🚀 Démarrage de l'application..."
 exec npm start

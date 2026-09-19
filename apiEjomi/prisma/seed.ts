@@ -612,6 +612,67 @@ async function seedFifo(entreprise: any, allPerms: any[]) {
   console.log('  ✅ Seed FIFO terminé');
 }
 
+async function ensureDefaultAdmin(entreprises: any[]) {
+  const email = 'admin@maquis.com';
+  const password = await hash('admin123');
+  const firstEntreprise = entreprises[0];
+  const firstAdminRole = await prisma.role.findFirst({
+    where: { name: 'ADMIN', entrepriseId: firstEntreprise.id },
+  });
+
+  if (!firstAdminRole) throw new Error('Rôle ADMIN introuvable pour le compte par défaut');
+
+  let admin = await prisma.user.findFirst({ where: { email } });
+  if (!admin) {
+    admin = await prisma.user.create({
+      data: {
+        email,
+        password,
+        nom: 'Admin',
+        prenom: 'Maquis',
+        adresse: firstEntreprise.adresse || 'Ouagadougou',
+        tel: '70000000',
+        roleId: firstAdminRole.id,
+        entrepriseId: firstEntreprise.id,
+        employe: { create: { salaire: 250000, dateEmbauche: new Date() } },
+      },
+    });
+  } else {
+    admin = await prisma.user.update({
+      where: { id: admin.id },
+      data: {
+        password,
+        nom: 'Admin',
+        prenom: 'Maquis',
+        roleId: firstAdminRole.id,
+        entrepriseId: firstEntreprise.id,
+      },
+    });
+
+    const employe = await prisma.employe.findUnique({ where: { userId: admin.id } });
+    if (!employe) {
+      await prisma.employe.create({
+        data: { userId: admin.id, salaire: 250000, dateEmbauche: new Date() },
+      });
+    }
+  }
+
+  for (const entreprise of entreprises) {
+    const adminRole = await prisma.role.findFirst({
+      where: { name: 'ADMIN', entrepriseId: entreprise.id },
+    });
+    if (!adminRole) continue;
+
+    await prisma.userEntreprise.upsert({
+      where: { userId_entrepriseId: { userId: admin.id, entrepriseId: entreprise.id } },
+      update: { roleId: adminRole.id },
+      create: { userId: admin.id, entrepriseId: entreprise.id, roleId: adminRole.id },
+    });
+  }
+
+  console.log(`  ✅ Admin par défaut: ${email} / admin123`);
+}
+
 // ─────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────
@@ -744,6 +805,10 @@ async function main() {
   console.log('\n📦 Seed FIFO (appros + ventes avec marge)...');
   await seedFifo(e2, allPerms);
 
+  // ── ADMIN PAR DÉFAUT ──
+  console.log('\n🔑 Admin par défaut...');
+  await ensureDefaultAdmin([e1, e2]);
+
   // ════════════════════════════════════════════
   // USER MULTI-ENTREPRISES (le cas à tester !)
   // ════════════════════════════════════════════
@@ -805,6 +870,10 @@ async function main() {
   console.log('\n🔑 SUPER ADMIN (toutes entreprises)');
   console.log('  Email    : superadmin@ejomi.com');
   console.log('  Password : superadmin123');
+
+  console.log('\n🔑 ADMIN PAR DÉFAUT (toutes entreprises)');
+  console.log('  Email    : admin@maquis.com');
+  console.log('  Password : admin123');
 
   console.log('\n🏢 MAQUIS LE BAOBAB');
   console.log('  Admin    : admin@lebaobab.bf     / admin123');
