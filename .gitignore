@@ -1,0 +1,48 @@
+# Secrets et variables d'environnement
+.env
+.env.*
+!.env.example
+dotenv
+**/dotenv
+
+# Dépendances
+node_modules/
+
+# Builds et caches
+.next/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+.turbo/
+
+# Historique local de l'éditeur
+.history/
+.claude/
+.vscode/
+
+# Fichiers générés et données locales
+uploads/
+**/uploads/
+*.log
+*.pid
+*.seed
+*.dump
+
+# Docker et fichiers locaux
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+
+# Système
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Certificats et clés privées
+*.pem
+*.key
+*.p12
+*.pfx
