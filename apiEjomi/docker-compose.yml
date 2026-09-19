@@ -32,7 +32,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       API_URL: ${API_URL:-http://localhost:3001}
-      DATABASE_URL: postgresql://${DB_USER:-maquis_user}:M%40quis_P%40assw0rd123@postgres:5432/${DB_NAME:-gestion_maquis}?schema=public
+      DATABASE_URL: postgresql://${DB_USER:-maquis_user}:M%40quis@postgres:5432/${DB_NAME:-gestion_maquis}?schema=public
       JWT_SECRET: ${JWT_SECRET:-default_jwt_secret_change_me}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost:3002,https://au-bon-moment.com,https://www.au-bon-moment.com}
     ports:

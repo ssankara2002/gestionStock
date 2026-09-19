@@ -94,3 +94,7 @@ docker compose -f apiEjomi/docker-compose.yml down -v
 docker compose --env-file apiEjomi/dotenv -f apiEjomi/docker-compose.yml up -d --build
 
   ```
+wsl --install
+wsl --set-default-version 2
+wsl --status
+wsl --status

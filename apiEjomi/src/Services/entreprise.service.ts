@@ -67,7 +67,7 @@ const create = async (entrepriseData: any, adminData: any) => {
   const existingEntreprise = await prisma.entreprise.findUnique({ where: { email } });
   if (existingEntreprise) throw new Error('Une entreprise avec cet email existe déjà');
 
-  const existingUser = await prisma.user.findUnique({ where: { email: aEmail } });
+  const existingUser = await prisma.user.findFirst({ where: { email: aEmail } });
   if (existingUser) throw new Error('Un utilisateur avec cet email existe déjà');
 
   const hashedPassword = await bcrypt.hash(password, 12);
@@ -144,6 +144,7 @@ const create = async (entrepriseData: any, adminData: any) => {
     return { entreprise, admin };
   });
 };
+
 
 const update = async (id: number, data: any) => {
   const allowed = [

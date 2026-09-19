@@ -19,6 +19,7 @@ export const getEntrepriseController = async (req: Request, res: Response): Prom
     if (!entreprise) { res.status(404).json({ success: false, message: 'Entreprise non trouvée' }); return; }
     res.status(200).json({ success: true, data: entreprise });
   } catch (error: any) {
+    console.error('Erreur lors de la récupération de l\'entreprise :', error);
     res.status(500).json({ success: false, message: 'Erreur serveur', error: error.message });
   }
 };
@@ -34,6 +35,7 @@ export const createEntrepriseController = async (req: AuthenticatedRequest, res:
     res.status(201).json({ success: true, message: 'Entreprise créée avec succès', data: result });
   } catch (error: any) {
     const isMetier = error.message?.includes('email') || error.message?.includes('requis') || error.message?.includes('caractères');
+    console.error('Erreur lors de la création de l\'entreprise :', error);
     res.status(isMetier ? 400 : 500).json({ success: false, message: error.message || 'Erreur serveur' });
   }
 };
