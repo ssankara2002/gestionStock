@@ -48,7 +48,7 @@ export const requirePermission = (options: RequirePermissionOptions | string | s
       }
 
       // Si l'utilisateur est admin, lui donner accès à tout (uniquement ADMIN, pas les autres rôles)
-      const isAdmin = userRole.name === 'ADMIN' || userRole.id === 1;
+      const isAdmin = userRole.name === 'SUPER_ADMIN' || userRole.name === 'ADMIN' || userRole.id === 1;
 
       if (isAdmin) {
         console.log(`✅ Accès admin accordé (bypass) pour le rôle: ${userRole.name}`);

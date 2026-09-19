@@ -99,7 +99,7 @@ const login = async (email: string, password: string, entrepriseId?: number): Pr
   let roleId = user.roleId;
   let resolvedEntrepriseId = targetEntrepriseId;
 
-  if (targetEntrepriseId) {
+  if (targetEntrepriseId && user.role?.name !== 'SUPER_ADMIN') {
     // Chercher dans UserEntreprise d'abord (rôle spécifique à cette entreprise)
     const ue = user.entreprises.find(e => e.entrepriseId === targetEntrepriseId);
     if (ue?.role) {

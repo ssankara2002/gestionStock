@@ -147,7 +147,7 @@ export function usePermissions() {
   const hasPermission = (permission: Permission): boolean => {
     if (!userRole) return false
 
-    if (userRole === "ADMIN") return true
+    if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") return true
 
     // Utiliser les permissions de l'API si disponibles
     if (hasApiPermissions) {
@@ -170,14 +170,14 @@ export function usePermissions() {
 
   const getUserPermissions = (): Permission[] => {
     if (!userRole) return []
-    if (userRole === "ADMIN") return ["*"] as any
+    if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") return ["*"] as any
     if (hasApiPermissions) return apiPermissions as Permission[]
     if (userRole === "DIRECTEUR_GENERAL") return ["*"] as any
     return ROLE_PERMISSIONS[userRole] || []
   }
 
   const isAdmin = (): boolean => {
-    return userRole === "ADMIN" || userRole === "DIRECTEUR_GENERAL"
+    return userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "DIRECTEUR_GENERAL"
   }
 
   return {

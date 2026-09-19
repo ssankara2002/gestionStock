@@ -12,8 +12,8 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: "Gold Detection Equipment Store",
-  description: "Premium gold detection equipment for professionals and enthusiasts",
+  title: "stocka",
+  description: "stocka - Gestion de stock et commerce moderne",
 }
 
 const roboto = Roboto({

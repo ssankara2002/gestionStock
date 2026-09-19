@@ -22,12 +22,36 @@ Accès locaux :
 
 Le démarrage Docker exécute automatiquement le seed de production. Il insère uniquement les permissions, les rôles et l’administrateur par défaut.
 
-## Administrateur par défaut
+## Accès local avec un nom de domaine
+
+La stack locale inclut Nginx pour servir l’application sur le port HTTP standard :
+
+```text
+http://au-bon-moment.com
+```
+
+Ajouter cette ligne au fichier `C:\Windows\System32\drivers\etc\hosts` avec les droits administrateur :
+
+```text
+127.0.0.1 au-bon-moment.com
+```
+
+Puis démarrer la stack :
+
+```bash
+docker compose --env-file apiEjomi/dotenv -f apiEjomi/docker-compose.yml up -d --build
+```
+
+L’API reste accessible via `http://au-bon-moment.com/api` et Swagger via `http://au-bon-moment.com/api-docs`.
+
+## Super administrateur par défaut
 
 ```text
 Email : admin@maquis.com
 Mot de passe : admin123
 ```
+
+Ce compte possède le rôle global `SUPER_ADMIN` et peut créer de nouvelles entreprises depuis `/super-admin/entreprises/nouveau`.
 
 Pour personnaliser ce compte, définir ces variables dans l’environnement Docker :
 
@@ -67,8 +91,6 @@ Pour supprimer également le volume PostgreSQL :
 docker compose -f apiEjomi/docker-compose.yml down -v
 ```
 ```bash
-docker compose \
-  --env-file apiEjomi/dotenv \
-  -f apiEjomi/docker-compose.yml \
-  up -d --build
+docker compose --env-file apiEjomi/dotenv -f apiEjomi/docker-compose.yml up -d --build
+
   ```

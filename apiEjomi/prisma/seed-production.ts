@@ -27,6 +27,7 @@ const permissionGroups: Record<string, string[]> = {
 };
 
 const roleNames = [
+  'SUPER_ADMIN',
   'ADMIN',
   'DIRECTEUR_GENERAL',
   'GERANT',
@@ -45,7 +46,11 @@ async function ensureRole(name: string, entrepriseId: number | null) {
   return prisma.role.create({
     data: {
       name,
-      description: name === 'ADMIN' ? 'Administrateur avec tous les droits' : `Rôle ${name}`,
+      description: name === 'SUPER_ADMIN'
+        ? 'Super administrateur global avec tous les droits'
+        : name === 'ADMIN'
+          ? 'Administrateur avec tous les droits'
+          : `Rôle ${name}`,
       entrepriseId,
     },
   });
@@ -76,7 +81,7 @@ async function main() {
   for (const entrepriseId of scopes) {
     for (const roleName of roleNames) {
       const role = await ensureRole(roleName, entrepriseId);
-      if (roleName === 'ADMIN') {
+      if (roleName === 'SUPER_ADMIN' || roleName === 'ADMIN') {
         adminRoles.push(role);
         await prisma.role.update({
           where: { id: role.id },
@@ -89,8 +94,7 @@ async function main() {
   const email = process.env.ADMIN_EMAIL || 'admin@maquis.com';
   const password = process.env.ADMIN_PASSWORD || 'admin123';
   const firstEntrepriseId = entreprises[0]?.id ?? null;
-  const primaryRole = adminRoles.find(role => role.entrepriseId === firstEntrepriseId)
-    || adminRoles.find(role => role.entrepriseId === null);
+  const primaryRole = adminRoles.find(role => role.name === 'SUPER_ADMIN' && role.entrepriseId === null);
 
   if (!primaryRole) {
     throw new Error('Impossible de créer le rôle ADMIN');

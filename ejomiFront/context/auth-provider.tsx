@@ -165,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userRole = loggedInUser?.role?.name || "CLIENT"
 
       switch (userRole) {
+        case "SUPER_ADMIN":
         case "ADMIN":
         case "DIRECTEUR_GENERAL":
           router.push("/gerant/dashboard") // Accès complet

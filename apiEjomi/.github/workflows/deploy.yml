@@ -101,9 +101,9 @@ jobs:
         if: success()
         run: |
           echo "✅ Déploiement réussi!"
-          echo "🌐 URL: https://ejomi.edutrackhub.cloud"
-          echo "📚 Swagger: https://ejomi.edutrackhub.cloud/api-docs"
-          echo "🔍 Health: https://ejomi.edutrackhub.cloud/health"
+          echo "🌐 URL: https://au-bon-moment.com"
+          echo "📚 Swagger: https://au-bon-moment.com/api-docs"
+          echo "🔍 Health: https://au-bon-moment.com/health"
 
       # 8. Notification d'échec
       - name: Deployment failed

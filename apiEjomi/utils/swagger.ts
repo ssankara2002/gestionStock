@@ -20,7 +20,7 @@ const options: Options = {
     },
     servers: [
       {
-        url: process.env.API_URL || 'https://ejomi.edutrackhub.cloud',
+        url: process.env.API_URL || 'https://au-bon-moment.com',
         description: 'Serveur de production',
       },
       {
