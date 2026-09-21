@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Building2, Save, BookOpen, Image, Clock, Share2 } from "lucide-react"
+import { ArrowLeft, Building2, Save, BookOpen, Image, Clock, Share2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,10 @@ export default function ModifierEntreprisePage() {
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     nom: "", email: "", tel: "", adresse: "", logo: "", geolocalisation: "",
     heroTitre: "", heroSousTitre: "", heroImage: "",
@@ -49,6 +53,8 @@ export default function ModifierEntreprisePage() {
           jourfermeture: e.jourfermeture || [],
           heurefermeture: e.heurefermeture || [],
         })
+        setLogoPreview(e.logo ? (e.logo.startsWith("http") || e.logo.startsWith("/") ? e.logo : `/uploads/${e.logo}`) : null)
+        setHeroImagePreview(e.heroImage ? (e.heroImage.startsWith("http") || e.heroImage.startsWith("/") ? e.heroImage : `/uploads/${e.heroImage}`) : null)
       } catch {
         toast({ title: "Erreur", description: "Impossible de charger l'entreprise", variant: "destructive" })
         router.push("/super-admin/entreprises")
@@ -61,6 +67,19 @@ export default function ModifierEntreprisePage() {
 
   const setField = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setFormData((prev) => ({ ...prev, [field]: e.target.value }))
+
+  const handleImageChange = (field: "logo" | "heroImage") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const preview = URL.createObjectURL(file)
+    if (field === "logo") {
+      setLogoFile(file)
+      setLogoPreview(preview)
+    } else {
+      setHeroImageFile(file)
+      setHeroImagePreview(preview)
+    }
+  }
 
   const toggleJour = (jour: string, liste: "jourouverture" | "jourfermeture") => {
     setFormData((prev) => {
@@ -84,7 +103,13 @@ export default function ModifierEntreprisePage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      await entrepriseService.update(id, formData)
+      const dataToSend = new FormData()
+      Object.entries(formData).forEach(([key, value]) => {
+        dataToSend.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value ?? ""))
+      })
+      if (logoFile) dataToSend.append("logo", logoFile)
+      if (heroImageFile) dataToSend.append("heroImage", heroImageFile)
+      await entrepriseService.update(id, dataToSend)
       toast({ title: "Entreprise mise à jour avec succès" })
       router.push("/super-admin/entreprises")
     } catch (error: any) {
@@ -159,12 +184,20 @@ export default function ModifierEntreprisePage() {
               <Input value={formData.heroSousTitre} onChange={setField("heroSousTitre")} placeholder="Gérez votre stock..." />
             </div>
             <div className="space-y-2">
-              <Label>Logo (URL)</Label>
-              <Input value={formData.logo} onChange={setField("logo")} placeholder="https://..." />
+              <Label htmlFor="logo-upload">Logo</Label>
+              {logoPreview && <img src={logoPreview} alt="Aperçu du logo" className="h-20 w-20 rounded-md object-contain border" />}
+              <Label htmlFor="logo-upload" className="flex cursor-pointer items-center rounded-md border border-input px-4 py-2 text-sm hover:bg-accent">
+                <Upload className="mr-2 h-4 w-4" />Changer le logo
+              </Label>
+              <Input id="logo-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageChange("logo")} />
             </div>
             <div className="space-y-2">
-              <Label>Image hero (URL)</Label>
-              <Input value={formData.heroImage} onChange={setField("heroImage")} placeholder="https://..." />
+              <Label htmlFor="hero-image-upload">Image hero</Label>
+              {heroImagePreview && <img src={heroImagePreview} alt="Aperçu de l'image hero" className="h-20 w-full rounded-md object-cover border" />}
+              <Label htmlFor="hero-image-upload" className="flex cursor-pointer items-center rounded-md border border-input px-4 py-2 text-sm hover:bg-accent">
+                <Upload className="mr-2 h-4 w-4" />Changer l'image hero
+              </Label>
+              <Input id="hero-image-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageChange("heroImage")} />
             </div>
           </CardContent>
         </Card>
@@ -223,7 +256,7 @@ export default function ModifierEntreprisePage() {
               </div>
               {formData.jourouverture.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  <Label className="text-xs text-muted-foreground">Heures d'ouverture</Label>
+                  <Label className="text-xs text-muted-foreground">Horaires pour chaque jour ouvert</Label>
                   {formData.jourouverture.map((jour, i) => (
                     <div key={jour} className="flex items-center gap-3">
                       <span className="text-sm w-24 font-medium">{jour}</span>
@@ -232,6 +265,13 @@ export default function ModifierEntreprisePage() {
                         className="w-36"
                         value={formData.heureouverture[i] || ""}
                         onChange={(e) => setHeure(i, e.target.value, "heureouverture")}
+                      />
+                      <span className="text-sm text-muted-foreground">à</span>
+                      <Input
+                        type="time"
+                        className="w-36"
+                        value={formData.heurefermeture[i] || ""}
+                        onChange={(e) => setHeure(i, e.target.value, "heurefermeture")}
                       />
                     </div>
                   ))}
@@ -257,22 +297,6 @@ export default function ModifierEntreprisePage() {
                   </button>
                 ))}
               </div>
-              {formData.jourfermeture.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <Label className="text-xs text-muted-foreground">Heures de fermeture</Label>
-                  {formData.jourfermeture.map((jour, i) => (
-                    <div key={jour} className="flex items-center gap-3">
-                      <span className="text-sm w-24 font-medium">{jour}</span>
-                      <Input
-                        type="time"
-                        className="w-36"
-                        value={formData.heurefermeture[i] || ""}
-                        onChange={(e) => setHeure(i, e.target.value, "heurefermeture")}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

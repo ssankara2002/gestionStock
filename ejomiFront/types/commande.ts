@@ -6,7 +6,8 @@ import { Livraison } from "./livraison"
 import { User } from "./user"
 
 export interface LigneCommandeInput {
-  produitId: number
+  produitId?: number
+  platId?: number
   quantite: number
   prixUnitaire: number
   reduction: number

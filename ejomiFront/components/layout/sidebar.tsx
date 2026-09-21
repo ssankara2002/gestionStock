@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Package,
+  Utensils,
   ShoppingBag,
   Users,
   Truck,
@@ -99,6 +100,12 @@ export function AppSidebar() {
       label: "Produits",
       icon: <Package className="h-5 w-5" />,
       permissions: ["produit.read"],
+    },
+    {
+      href: "/plats",
+      label: "Plats",
+      icon: <Utensils className="h-5 w-5" />,
+      permissions: ["plat.read"],
     },
     {
       href: "/magasinier/fournisseurs",

@@ -145,6 +145,7 @@ const create = async (entrepriseData: any, adminData: any) => {
   });
 };
 
+
 const update = async (id: number, data: any) => {
   const allowed = [
     'nom', 'email', 'tel', 'adresse', 'logo', 'geolocalisation',

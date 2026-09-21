@@ -47,6 +47,12 @@ const permissions = [
   { key: 'produit.update', description: 'Modifier un produit' },
   { key: 'produit.delete', description: 'Supprimer un produit' },
 
+  // Plat permissions
+  { key: 'plat.read', description: 'Voir les plats' },
+  { key: 'plat.create', description: 'Créer un plat' },
+  { key: 'plat.update', description: 'Modifier un plat' },
+  { key: 'plat.delete', description: 'Supprimer un plat' },
+
   // Commande permissions
   { key: 'commande.read', description: 'Voir les commandes' },
   { key: 'commande.create', description: 'Créer une commande' },

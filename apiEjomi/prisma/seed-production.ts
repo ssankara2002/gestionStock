@@ -10,6 +10,7 @@ const permissionGroups: Record<string, string[]> = {
   employe: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
   fournisseur: ['read', 'create', 'update', 'delete', 'export'],
   produit: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
+  plat: ['read', 'create', 'update', 'delete'],
   commande: ['read', 'create', 'update', 'delete', 'export', 'statistics', 'validate'],
   paiement: ['read', 'create', 'update', 'delete', 'export', 'statistics', 'validate'],
 //   livraison: ['read', 'create', 'update', 'delete', 'export', 'assign'],

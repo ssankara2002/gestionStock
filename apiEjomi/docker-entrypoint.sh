@@ -5,11 +5,11 @@
 echo "⏳ Attente de PostgreSQL (15 secondes)..."
 sleep 15
 
-echo "🔄 Synchronisation du schéma avec la base de données..."
+echo "🔄 Application des migrations avec la base de données..."
 for i in 1 2 3 4 5; do
   echo "Tentative $i/5..."
-  if npx prisma db push --accept-data-loss --skip-generate; then
-    echo "✅ Schéma synchronisé!"
+  if npx prisma migrate deploy; then
+    echo "✅ Migrations appliquées!"
     break
   fi
   if [ $i -lt 5 ]; then

@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Package,
+  Utensils,
   ShoppingBag,
   Users,
   Truck,
@@ -106,6 +107,12 @@ export const MENU_ITEMS: MenuItem[] = [
     label: "Produits",
     icon: Package,
     roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "VENDEUR"],
+  },
+  {
+    href: "/plats",
+    label: "Plats",
+    icon: Utensils,
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "GERANT", "VENDEUR"],
   },
   {
     href: "/magasinier/fournisseurs",

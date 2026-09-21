@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-maquis_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-M@quis_P@assw0rd123}
       POSTGRES_DB: ${DB_NAME:-gestion_maquis}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -32,7 +32,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       API_URL: ${API_URL:-http://localhost:3001}
-      DATABASE_URL: postgresql://${DB_USER:-maquis_user}:${DB_PASSWORD:-changeme}@postgres:5432/${DB_NAME:-gestion_maquis}?schema=public
+      DATABASE_URL: postgresql://${DB_USER:-maquis_user}:M%40quis@postgres:5432/${DB_NAME:-gestion_maquis}?schema=public
       JWT_SECRET: ${JWT_SECRET:-default_jwt_secret_change_me}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost:3002,https://au-bon-moment.com,https://www.au-bon-moment.com}
     ports:
@@ -59,7 +59,7 @@ services:
       context: ../ejomiFront
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://au-bon-moment.com/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
         JWT_SECRET: ${JWT_SECRET:-default_jwt_secret_change_me}
     environment:
       NODE_ENV: production

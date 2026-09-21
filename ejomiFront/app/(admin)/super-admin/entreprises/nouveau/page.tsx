@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Building2, Save, User, Globe, BookOpen, Image, Clock, Share2, Plus, X } from "lucide-react"
+import { ArrowLeft, Building2, Save, User, Globe, BookOpen, Image, Clock, Share2, Plus, X, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,10 @@ export default function NouvelleEntreprisePage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null)
 
   const [entrepriseData, setEntrepriseData] = useState({
     // Infos de base
@@ -60,6 +64,19 @@ export default function NouvelleEntreprisePage() {
   const setField = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setEntrepriseData((prev) => ({ ...prev, [field]: e.target.value }))
 
+  const handleImageChange = (field: "logo" | "heroImage") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const preview = URL.createObjectURL(file)
+    if (field === "logo") {
+      setLogoFile(file)
+      setLogoPreview(preview)
+    } else {
+      setHeroImageFile(file)
+      setHeroImagePreview(preview)
+    }
+  }
+
   const toggleJour = (jour: string, liste: "jourouverture" | "jourfermeture") => {
     setEntrepriseData((prev) => {
       const current = prev[liste]
@@ -95,7 +112,12 @@ export default function NouvelleEntreprisePage() {
 
     setIsSubmitting(true)
     try {
-      await entrepriseService.create({ entreprise: entrepriseData, admin: adminData })
+      const dataToSend = new FormData()
+      dataToSend.append("entreprise", JSON.stringify({ ...entrepriseData, logo: "", heroImage: "" }))
+      dataToSend.append("admin", JSON.stringify(adminData))
+      if (logoFile) dataToSend.append("logo", logoFile)
+      if (heroImageFile) dataToSend.append("heroImage", heroImageFile)
+      await entrepriseService.create(dataToSend)
       toast({ title: "Entreprise créée avec succès" })
       router.push("/super-admin/entreprises")
     } catch (error: any) {
@@ -173,12 +195,20 @@ export default function NouvelleEntreprisePage() {
               <Input value={entrepriseData.heroSousTitre} onChange={setField("heroSousTitre")} placeholder="Ex: Gérez votre stock efficacement" />
             </div>
             <div className="space-y-2">
-              <Label>Logo (URL)</Label>
-              <Input value={entrepriseData.logo} onChange={setField("logo")} placeholder="https://... (URL de l'image du logo)" />
+              <Label htmlFor="logo-upload">Logo</Label>
+              {logoPreview && <img src={logoPreview} alt="Aperçu du logo" className="h-20 w-20 rounded-md object-contain border" />}
+              <Label htmlFor="logo-upload" className="flex cursor-pointer items-center rounded-md border border-input px-4 py-2 text-sm hover:bg-accent">
+                <Upload className="mr-2 h-4 w-4" />Téléverser le logo
+              </Label>
+              <Input id="logo-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageChange("logo")} />
             </div>
             <div className="space-y-2">
-              <Label>Image hero (URL)</Label>
-              <Input value={entrepriseData.heroImage} onChange={setField("heroImage")} placeholder="https://... (image de fond du hero)" />
+              <Label htmlFor="hero-image-upload">Image hero</Label>
+              {heroImagePreview && <img src={heroImagePreview} alt="Aperçu de l'image hero" className="h-20 w-full rounded-md object-cover border" />}
+              <Label htmlFor="hero-image-upload" className="flex cursor-pointer items-center rounded-md border border-input px-4 py-2 text-sm hover:bg-accent">
+                <Upload className="mr-2 h-4 w-4" />Téléverser l'image hero
+              </Label>
+              <Input id="hero-image-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageChange("heroImage")} />
             </div>
           </CardContent>
         </Card>
@@ -238,7 +268,7 @@ export default function NouvelleEntreprisePage() {
               </div>
               {entrepriseData.jourouverture.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  <Label className="text-xs text-muted-foreground">Heures d'ouverture pour chaque jour sélectionné</Label>
+                  <Label className="text-xs text-muted-foreground">Horaires pour chaque jour ouvert</Label>
                   {entrepriseData.jourouverture.map((jour, i) => (
                     <div key={jour} className="flex items-center gap-3">
                       <span className="text-sm w-24 font-medium">{jour}</span>
@@ -248,6 +278,14 @@ export default function NouvelleEntreprisePage() {
                         value={entrepriseData.heureouverture[i] || ""}
                         onChange={(e) => setHeure(i, e.target.value, "heureouverture")}
                         placeholder="08:00"
+                      />
+                      <span className="text-sm text-muted-foreground">à</span>
+                      <Input
+                        type="time"
+                        className="w-36"
+                        value={entrepriseData.heurefermeture[i] || ""}
+                        onChange={(e) => setHeure(i, e.target.value, "heurefermeture")}
+                        placeholder="18:00"
                       />
                     </div>
                   ))}
@@ -273,23 +311,6 @@ export default function NouvelleEntreprisePage() {
                   </button>
                 ))}
               </div>
-              {entrepriseData.jourfermeture.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <Label className="text-xs text-muted-foreground">Heures de fermeture pour chaque jour sélectionné</Label>
-                  {entrepriseData.jourfermeture.map((jour, i) => (
-                    <div key={jour} className="flex items-center gap-3">
-                      <span className="text-sm w-24 font-medium">{jour}</span>
-                      <Input
-                        type="time"
-                        className="w-36"
-                        value={entrepriseData.heurefermeture[i] || ""}
-                        onChange={(e) => setHeure(i, e.target.value, "heurefermeture")}
-                        placeholder="18:00"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

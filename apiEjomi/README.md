@@ -94,3 +94,9 @@ docker compose -f apiEjomi/docker-compose.yml down -v
 docker compose --env-file apiEjomi/dotenv -f apiEjomi/docker-compose.yml up -d --build
 
   ```
+
+Le service PostgreSQL utilise le volume nommé `postgres_data`. La reconstruction
+avec `up -d --build` conserve donc les données. Ne lancez `down -v` que si vous
+voulez supprimer explicitement la base et ses volumes.
+ docker exec -it maquis-db psql -U maquis_user -d gestion_maquis
+psql 
