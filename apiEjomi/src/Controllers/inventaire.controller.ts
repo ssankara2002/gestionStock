@@ -60,13 +60,15 @@ export const getStatistiquesInventaire = async (req: AuthenticatedRequest, res: 
 export const getProduitsInventaire = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { lieu } = req.query;
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
 
     if (lieu && !['MAGASIN', 'BOUTIQUE'].includes(lieu as string)) {
       res.status(400).json({ success: false, message: "lieu doit être MAGASIN ou BOUTIQUE." });
       return;
     }
 
-    const produits = await inventaireService.getProduitsInventaire(lieu as LieuStock | undefined, req.user?.entrepriseId);
+    const produits = await inventaireService.getProduitsInventaire(lieu as LieuStock | undefined, req.user?.entrepriseId, page, limit);
     res.status(200).json({ success: true, data: produits });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });

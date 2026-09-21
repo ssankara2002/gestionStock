@@ -180,45 +180,106 @@ const getSessionById = async (id: number) => {
   });
 };
 
-const getProduitsInventaire = async (lieu?: LieuStock, entrepriseId?: number) => {
-  const produitSelect = {
-    id: true,
-    libelle: true,
-    prixDeVenteUnitaire: true,
-    prixAchatUnitaire: true,
-  };
-
+const getProduitsInventaire = async (lieu?: LieuStock, entrepriseId?: number, page = 1, limit = 20) => {
+  const skip = (page - 1) * limit;
   const produitWhere = entrepriseId ? { entrepriseId } : {};
 
   if (lieu === 'BOUTIQUE') {
-    return prisma.stockBoutique.findMany({
-      where: entrepriseId ? { produit: produitWhere } : undefined,
-      include: { produit: { select: produitSelect } },
-      orderBy: { produit: { libelle: 'asc' } },
-    });
+    const [data, total] = await prisma.$transaction([
+      prisma.produit.findMany({
+        where: produitWhere,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          libelle: true,
+          prixDeVenteUnitaire: true,
+          prixAchatUnitaire: true,
+          stockBoutique: { select: { id: true, quantite: true, seuilAlerte: true } },
+        },
+        orderBy: { libelle: 'asc' },
+      }),
+      prisma.produit.count({ where: produitWhere }),
+    ]);
+
+    const normalized = data.map((produit: any) => ({
+      id: produit.stockBoutique?.id ?? produit.id,
+      produitId: produit.id,
+      libelle: produit.libelle,
+      quantite: produit.stockBoutique?.quantite ?? 0,
+      seuilAlerte: produit.stockBoutique?.seuilAlerte ?? 5,
+      stockBoutiqueId: produit.stockBoutique?.id ?? null,
+      produit,
+    }));
+
+    return { data: normalized, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   if (lieu === 'MAGASIN') {
-    return prisma.stockMagasin.findMany({
-      where: entrepriseId ? { produit: produitWhere } : undefined,
-      include: { produit: { select: produitSelect } },
-      orderBy: { produit: { libelle: 'asc' } },
-    });
+    const [data, total] = await prisma.$transaction([
+      prisma.produit.findMany({
+        where: produitWhere,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          libelle: true,
+          prixDeVenteUnitaire: true,
+          prixAchatUnitaire: true,
+          stockMagasin: { select: { id: true, quantite: true, seuilAlerte: true } },
+        },
+        orderBy: { libelle: 'asc' },
+      }),
+      prisma.produit.count({ where: produitWhere }),
+    ]);
+
+    const normalized = data.map((produit: any) => ({
+      id: produit.stockMagasin?.id ?? produit.id,
+      produitId: produit.id,
+      libelle: produit.libelle,
+      quantite: produit.stockMagasin?.quantite ?? 0,
+      seuilAlerte: produit.stockMagasin?.seuilAlerte ?? 10,
+      stockMagasinId: produit.stockMagasin?.id ?? null,
+      produit,
+    }));
+
+    return { data: normalized, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  // Sans lieu : retourne tous les produits avec les deux stocks
-  return prisma.produit.findMany({
-    where: produitWhere,
-    select: {
-      id: true,
-      libelle: true,
-      prixDeVenteUnitaire: true,
-      prixAchatUnitaire: true,
-      stockMagasin: { select: { id: true, quantite: true, seuilAlerte: true } },
-      stockBoutique: { select: { id: true, quantite: true, seuilAlerte: true } },
-    },
-    orderBy: { libelle: 'asc' },
-  });
+  const [data, total] = await prisma.$transaction([
+    prisma.produit.findMany({
+      where: produitWhere,
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        libelle: true,
+        prixDeVenteUnitaire: true,
+        prixAchatUnitaire: true,
+        stockMagasin: { select: { id: true, quantite: true, seuilAlerte: true } },
+        stockBoutique: { select: { id: true, quantite: true, seuilAlerte: true } },
+      },
+      orderBy: { libelle: 'asc' },
+    }),
+    prisma.produit.count({ where: produitWhere }),
+  ]);
+
+  return {
+    data: data.map((produit: any) => ({
+      id: produit.id,
+      produitId: produit.id,
+      libelle: produit.libelle,
+      quantite: produit.stockMagasin?.quantite ?? produit.stockBoutique?.quantite ?? 0,
+      seuilAlerte: produit.stockMagasin?.seuilAlerte ?? produit.stockBoutique?.seuilAlerte ?? 10,
+      stockMagasinId: produit.stockMagasin?.id ?? null,
+      stockBoutiqueId: produit.stockBoutique?.id ?? null,
+      produit,
+    })),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
 };
 
 const getStatistiquesInventaire = async (lieu?: LieuStock, entrepriseId?: number) => {

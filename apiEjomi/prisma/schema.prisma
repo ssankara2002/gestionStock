@@ -202,18 +202,22 @@ model Produit {
 }
 
 model Plat {
-  id                Int         @id @default(autoincrement())
+  id                Int           @id @default(autoincrement())
   libelle           String
   description       String?
   image             String?
+  categorie         CategoriePlat
   prixVenteUnitaire Float
   entrepriseId      Int?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  entreprise        Entreprise? @relation(fields: [entrepriseId], references: [id])
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  entreprise        Entreprise?   @relation(fields: [entrepriseId], references: [id])
   lignesCommande    LigneCommande[]
 
   @@index([libelle])
+  @@index([categorie])
   @@index([entrepriseId])
 }
 
@@ -583,3 +587,11 @@ enum ContactStatut {
   TRAITE
   ARCHIVE
 }
+
+enum CategoriePlat {
+  LIQUIDE
+  SNACK
+  REPAS
+}
+
+

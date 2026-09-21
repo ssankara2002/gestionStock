@@ -12,8 +12,11 @@ interface RoleUpdateData {
   description?: string;
 }
 
-const getAllRoles = async () => {
+const getAllRoles = async (entrepriseId?: number | null) => {
+  const where = entrepriseId === undefined ? { entrepriseId: null } : { entrepriseId };
+
   return await prisma.role.findMany({
+    where,
     include: {
       permissions: true,
       users: {

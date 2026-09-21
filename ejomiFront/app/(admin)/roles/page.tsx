@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAuth } from "@/context/auth-provider"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -26,6 +27,7 @@ import { Shield, Loader2, Users, Lock } from "lucide-react"
 import { DataPagination } from "@/components/shared/data-pagination"
 
 export default function RolesPage() {
+  const { entreprise } = useAuth()
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -33,12 +35,12 @@ export default function RolesPage() {
 
   useEffect(() => {
     loadRoles()
-  }, [])
+  }, [entreprise?.id])
 
   const loadRoles = async () => {
     try {
       setLoading(true)
-      const response = await rolesService.getAll()
+      const response = await rolesService.getAll(entreprise?.id)
       setRoles(response.data.data || [])
     } catch (error: any) {
       toast({
@@ -80,7 +82,7 @@ export default function RolesPage() {
             Gestion des rôles
           </h1>
           <p className="text-muted-foreground">
-            Gérez les rôles et leurs permissions
+            {entreprise ? `Rôles de l'entreprise ${entreprise.nom}` : "Gérez les rôles et leurs permissions"}
           </p>
         </div>
       </div>
@@ -98,6 +100,7 @@ export default function RolesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nom</TableHead>
+                <TableHead>Entreprise</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead>Utilisateurs</TableHead>
@@ -115,6 +118,9 @@ export default function RolesPage() {
                 paginatedRoles.map((role) => (
                   <TableRow key={role.id}>
                     <TableCell className="font-medium">{role.name}</TableCell>
+                    <TableCell>
+                      {role.entrepriseId ? "Entreprise" : "Globale"}
+                    </TableCell>
                     <TableCell>
                       {role.description || (
                         <span className="text-muted-foreground italic">

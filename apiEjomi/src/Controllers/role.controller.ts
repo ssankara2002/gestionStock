@@ -3,7 +3,10 @@ import roleService from '../Services/role.service';
 
 export const getAllRoles = async (req: Request, res: Response): Promise<void> => {
   try {
-    const roles = await roleService.getAllRoles();
+    const rawEntrepriseId = req.query.entrepriseId;
+    const entrepriseId = rawEntrepriseId === undefined ? null : Number(rawEntrepriseId);
+
+    const roles = await roleService.getAllRoles(Number.isFinite(entrepriseId) ? entrepriseId : undefined);
     res.status(200).json({ success: true, data: roles });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur lors de la récupération des rôles', error: error.message });

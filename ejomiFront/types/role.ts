@@ -5,6 +5,7 @@ export interface Role {
   id: number
   name: string
   description?: string | null
+  entrepriseId?: number | null
   users?: any[] // Éviter la dépendance circulaire
   permissions?: Permission[]
 }

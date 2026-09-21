@@ -12,6 +12,7 @@ import { inventaireService } from "@/services/inventaire-service"
 import { useAuth } from "@/context/auth-provider"
 import type { AjustementStock } from "@/types/inventaire"
 import Link from "next/link"
+import { DataPagination, type PaginationInfo } from "@/components/shared/data-pagination"
 
 type Lieu = "MAGASIN" | "BOUTIQUE"
 
@@ -31,21 +32,52 @@ export default function InventairePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [ajustements, setAjustements] = useState<Map<number, AjustementStock>>(new Map())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null)
+  const [search, setSearch] = useState("")
+  const itemsPerPage = 10
 
-  const loadProduits = useCallback(async (l: Lieu) => {
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    setCurrentPage(1)
+  }
+
+  const loadProduits = useCallback(async (l: Lieu, page = 1, resetAdjustments = false) => {
     setLoading(true)
-    setAjustements(new Map())
+    if (resetAdjustments) setAjustements(new Map())
     try {
-      const response = await inventaireService.getProduits(l)
-      const raw: any[] = response.data?.data || response.data || []
-      const mapped: ProduitStock[] = raw.map((item: any) => ({
-        id: item.produit?.id ?? item.id,
-        libelle: item.produit?.libelle ?? item.libelle,
-        quantite: item.quantite ?? 0,
-        seuilAlerte: item.seuilAlerte ?? 5,
-        stockId: item.id,
-      }))
+      const response = await inventaireService.getProduits(l, page, 1000)
+      const payload = response.data?.data || response.data || []
+      const raw: any[] = Array.isArray(payload) ? payload : payload.data || []
+      const mapped: ProduitStock[] = raw.map((item: any) => {
+        const stock = item.stockMagasin ?? item.stockBoutique ?? null
+        const baseId = item.produitId ?? item.id ?? item.produit?.id
+        const quantityValue = item.quantite ?? stock?.quantite ?? 0
+        const seuilValue = item.seuilAlerte ?? stock?.seuilAlerte ?? (l === 'MAGASIN' ? 10 : 5)
+
+        return {
+          id: baseId,
+          libelle: item.libelle ?? item.produit?.libelle ?? 'Produit',
+          quantite: quantityValue,
+          seuilAlerte: seuilValue,
+          stockId: item.stockMagasinId ?? item.stockBoutiqueId ?? item.id,
+        }
+      })
       setProduits(mapped)
+
+      const filtered = mapped.filter((produit) =>
+        produit.libelle.toLowerCase().includes(search.toLowerCase())
+      )
+      const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage))
+      const safePage = Math.min(page, totalPages)
+      setPagination({
+        page: safePage,
+        limit: itemsPerPage,
+        total: filtered.length,
+        totalPages,
+        hasNext: safePage < totalPages,
+        hasPrev: safePage > 1,
+      })
     } catch (error: any) {
       toast({
         title: "Erreur de chargement",
@@ -58,7 +90,8 @@ export default function InventairePage() {
   }, [toast])
 
   useEffect(() => {
-    loadProduits(lieu)
+    setCurrentPage(1)
+    loadProduits(lieu, 1, true)
   }, [lieu, loadProduits])
 
   const handleQuantiteChange = (produitId: number, quantitePhysique: number, quantiteTheorique: number) => {
@@ -105,7 +138,7 @@ export default function InventairePage() {
         ajustements: Array.from(ajustements.values()),
       })
       toast({ title: "Inventaire enregistré", description: `${ajustements.size} ajustement(s) effectué(s) avec succès` })
-      await loadProduits(lieu)
+      await loadProduits(lieu, currentPage, true)
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -174,71 +207,97 @@ export default function InventairePage() {
                 : "Aucun ajustement en attente"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="max-w-sm">
+              <Input
+                type="search"
+                placeholder="Filtrer par produit..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+            </div>
+
             {loading ? (
               <div className="py-12 text-center text-muted-foreground">Chargement...</div>
-            ) : produits.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground">Aucun produit trouvé</div>
-            ) : (
-              <div className="rounded-md border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produit</TableHead>
-                      <TableHead className="text-right">Stock théorique</TableHead>
-                      <TableHead className="text-right w-36">Quantité physique</TableHead>
-                      <TableHead className="text-right">Écart</TableHead>
-                      <TableHead>Commentaire</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {produits.map((produit) => {
-                      const ajustement = ajustements.get(produit.id)
-                      const quantitePhysique = ajustement?.quantitePhysique ?? produit.quantite
-                      const ecart = quantitePhysique - produit.quantite
+            ) : (() => {
+              const allFilteredProduits = produits.filter((produit) =>
+                produit.libelle.toLowerCase().includes(search.toLowerCase())
+              )
+              const totalItems = allFilteredProduits.length
+              const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
+              const safePage = Math.min(currentPage, totalPages)
+              const filteredProduits = allFilteredProduits.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage)
 
-                      return (
-                        <TableRow key={produit.id} className={ajustement ? "bg-yellow-50 dark:bg-yellow-950/20" : ""}>
-                          <TableCell className="font-medium">{produit.libelle}</TableCell>
-                          <TableCell className="text-right">{produit.quantite}</TableCell>
-                          <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              min="0"
-                              value={quantitePhysique}
-                              onChange={(e) =>
-                                handleQuantiteChange(
-                                  produit.id,
-                                  parseInt(e.target.value) || 0,
-                                  produit.quantite
-                                )
-                              }
-                              className="w-24 text-right ml-auto"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className={ecart > 0 ? "text-green-600 font-semibold" : ecart < 0 ? "text-red-600 font-semibold" : "text-muted-foreground"}>
-                              {ecart > 0 ? "+" : ""}{ecart}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {ajustement && (
+              if (filteredProduits.length === 0) {
+                return <div className="py-12 text-center text-muted-foreground">Aucun produit trouvé</div>
+              }
+
+              return (
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produit</TableHead>
+                        <TableHead className="text-right">Stock théorique</TableHead>
+                        <TableHead className="text-right w-36">Quantité physique</TableHead>
+                        <TableHead className="text-right">Écart</TableHead>
+                        <TableHead>Commentaire</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProduits.map((produit) => {
+                        const ajustement = ajustements.get(produit.id)
+                        const quantitePhysique = ajustement?.quantitePhysique ?? produit.quantite
+                        const ecart = quantitePhysique - produit.quantite
+
+                        return (
+                          <TableRow key={produit.id} className={ajustement ? "bg-yellow-50 dark:bg-yellow-950/20" : ""}>
+                            <TableCell className="font-medium">{produit.libelle}</TableCell>
+                            <TableCell className="text-right">{produit.quantite}</TableCell>
+                            <TableCell className="text-right">
                               <Input
-                                type="text"
-                                placeholder="Commentaire (optionnel)"
-                                value={ajustement.commentaire || ""}
-                                onChange={(e) => handleCommentaireChange(produit.id, e.target.value)}
-                                className="w-56"
+                                type="number"
+                                min="0"
+                                value={quantitePhysique}
+                                onChange={(e) =>
+                                  handleQuantiteChange(
+                                    produit.id,
+                                    parseInt(e.target.value) || 0,
+                                    produit.quantite
+                                  )
+                                }
+                                className="w-24 text-right ml-auto"
                               />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className={ecart > 0 ? "text-green-600 font-semibold" : ecart < 0 ? "text-red-600 font-semibold" : "text-muted-foreground"}>
+                                {ecart > 0 ? "+" : ""}{ecart}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {ajustement && (
+                                <Input
+                                  type="text"
+                                  placeholder="Commentaire (optionnel)"
+                                  value={ajustement.commentaire || ""}
+                                  onChange={(e) => handleCommentaireChange(produit.id, e.target.value)}
+                                  className="w-56"
+                                />
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )
+            })()}
+
+            <DataPagination
+              pagination={pagination}
+              onPageChange={(page) => setCurrentPage(page)}
+            />
           </CardContent>
         </Card>
       </div>

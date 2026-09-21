@@ -197,6 +197,12 @@ export function AppSidebar() {
       icon: <Building2 className="h-5 w-5" />,
       roles: ["SUPER_ADMIN"],
     },
+    {
+      href: "/super-admin/roles",
+      label: "Rôles globaux",
+      icon: <Shield className="h-5 w-5" />,
+      roles: ["SUPER_ADMIN"],
+    },
   ]
 
   const userRole = user?.role?.name
