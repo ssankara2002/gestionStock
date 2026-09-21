@@ -33,6 +33,7 @@ export const createEntrepriseController = async (req: AuthenticatedRequest, res:
     const result = await entrepriseService.create(entreprise, admin);
     res.status(201).json({ success: true, message: 'Entreprise créée avec succès', data: result });
   } catch (error: any) {
+    console.log(error);
     const isMetier = error.message?.includes('email') || error.message?.includes('requis') || error.message?.includes('caractères');
     res.status(isMetier ? 400 : 500).json({ success: false, message: error.message || 'Erreur serveur' });
   }
@@ -50,6 +51,8 @@ export const updateEntrepriseController = async (req: AuthenticatedRequest, res:
     const updated = await entrepriseService.update(id, req.body);
     res.status(200).json({ success: true, data: updated });
   } catch (error: any) {
+    console.log(error);
+    
     res.status(500).json({ success: false, message: 'Erreur serveur', error: error.message });
   }
 };
