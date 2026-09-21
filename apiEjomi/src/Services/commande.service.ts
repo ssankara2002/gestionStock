@@ -17,7 +17,8 @@ const toCommandeStatut = (statut: string): string => {
 };
 
 interface LigneCommandeInput {
-  produitId: number;
+  produitId?: number;
+  platId?: number;
   quantite: number;
   prixUnitaire: number;
   reduction: number;
@@ -37,8 +38,19 @@ interface CommandeCreateInput {
 
 const createCommande = async (data: CommandeCreateInput) => {
   return prisma.$transaction(async (tx) => {
-    // 1. Vérifier le stock boutique pour chaque produit
+    // 1. Vérifier le stock uniquement pour les produits. Les plats n'ont pas de stock.
     for (const ligne of data.lignes) {
+      if (!ligne.produitId && !ligne.platId) {
+        throw new Error('Chaque ligne doit contenir un produit ou un plat.');
+      }
+      if (ligne.produitId && ligne.platId) {
+        throw new Error('Une ligne ne peut pas contenir un produit et un plat.');
+      }
+      if (ligne.platId) {
+        const plat = await tx.plat.findFirst({ where: { id: ligne.platId, entrepriseId: data.entrepriseId } });
+        if (!plat) throw new Error(`Plat introuvable pour l'entreprise.`);
+        continue;
+      }
       const stockBoutique = await tx.stockBoutique.findUnique({
         where: { produitId: ligne.produitId },
         include: { produit: { select: { libelle: true } } },
@@ -77,6 +89,19 @@ const createCommande = async (data: CommandeCreateInput) => {
 
     // 4. Créer les lignes avec lien vers StockBoutique, décrémenter le stock et calculer le coût FIFO
     for (const ligne of data.lignes) {
+      if (ligne.platId) {
+        await tx.ligneCommande.create({
+          data: {
+            commandeId: commande.id,
+            platId: ligne.platId,
+            quantiteCommande: ligne.quantite,
+            prixUnitaire: ligne.prixUnitaire,
+            montant: Math.max(0, ligne.prixUnitaire * ligne.quantite - ligne.reduction),
+            coutRevient: 0,
+          },
+        });
+        continue;
+      }
       const stockBoutique = await tx.stockBoutique.findUnique({
         where: { produitId: ligne.produitId },
       });
@@ -147,7 +172,7 @@ const createCommande = async (data: CommandeCreateInput) => {
     return tx.commande.findUnique({
       where: { id: commande.id },
       include: {
-        lignes: { include: { produit: true, stockBoutique: true } },
+        lignes: { include: { produit: true, plat: true, stockBoutique: true } },
         client: true,
         paiements: true,
       },
@@ -218,6 +243,11 @@ const updateCommande = async (id: number, data: CommandeCreateInput) => {
 
     // 3. Vérifier le stock boutique pour les nouvelles lignes
     for (const ligne of data.lignes) {
+      if (ligne.platId) {
+        const plat = await tx.plat.findFirst({ where: { id: ligne.platId, entrepriseId: data.entrepriseId } });
+        if (!plat) throw new Error('Plat introuvable pour l\'entreprise.');
+        continue;
+      }
       const stockBoutique = await tx.stockBoutique.findUnique({
         where: { produitId: ligne.produitId },
         include: { produit: { select: { libelle: true } } },
@@ -257,6 +287,21 @@ const updateCommande = async (id: number, data: CommandeCreateInput) => {
 
     // 7. Créer les nouvelles lignes et décrémenter le stock boutique
     for (const ligne of data.lignes) {
+      if (ligne.platId) {
+        const plat = await tx.plat.findFirst({ where: { id: ligne.platId, entrepriseId: data.entrepriseId } });
+        if (!plat) throw new Error('Plat introuvable pour l\'entreprise.');
+        await tx.ligneCommande.create({
+          data: {
+            commandeId: id,
+            platId: ligne.platId,
+            quantiteCommande: ligne.quantite,
+            prixUnitaire: ligne.prixUnitaire,
+            montant: Math.max(0, ligne.prixUnitaire * ligne.quantite - ligne.reduction),
+            coutRevient: 0,
+          },
+        });
+        continue;
+      }
       const stockBoutique = await tx.stockBoutique.findUnique({
         where: { produitId: ligne.produitId },
       });
@@ -281,7 +326,7 @@ const updateCommande = async (id: number, data: CommandeCreateInput) => {
     return tx.commande.findUnique({
       where: { id },
       include: {
-        lignes: { include: { produit: true, stockBoutique: true } },
+        lignes: { include: { produit: true, plat: true, stockBoutique: true } },
         client: true,
         vendeur: { include: { user: true } },
         paiements: true,
@@ -323,7 +368,7 @@ const getCommandesByVendeur = async (vendeurId: number) => {
     include: {
       client: true,
       vendeur: { include: { user: true } },
-      lignes: { include: { produit: true } },
+      lignes: { include: { produit: true, plat: true } },
       paiements: true,
     },
     orderBy: { dateCommande: 'desc' },
@@ -336,7 +381,7 @@ const getCommandesByClient = async (clientId: number) => {
     include: {
       client: true,
       vendeur: { include: { user: true } },
-      lignes: { include: { produit: true } },
+      lignes: { include: { produit: true, plat: true } },
       paiements: true,
     },
     orderBy: { dateCommande: 'desc' },

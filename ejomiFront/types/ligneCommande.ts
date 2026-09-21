@@ -6,7 +6,12 @@ export interface LigneCommande {
   montant: number
   commandeId: number
   produitId: number
+  produitId?: number
+  platId?: number
   produit?: Produit
+  plat?: { id: number; libelle: string; description?: string; prixVenteUnitaire: number }
+  produitId?: number
+  platId?: number
 }
 
 export interface LigneCommandeCreateData {

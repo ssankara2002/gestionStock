@@ -49,6 +49,7 @@ const getAllLignesCommande = async () => {
           prixDeVenteUnitaire: true,
         },
       },
+      plat: true,
     },
     orderBy: { id: 'desc' }
   });
@@ -71,6 +72,7 @@ const getLigneCommandeById = async (id: number) => {
         },
       },
       produit: true,
+      plat: true,
     },
   });
 };
@@ -91,6 +93,7 @@ const createLigneCommande = async (data: LigneCommandeCreateData) => {
         },
       },
       produit: { select: { id: true, libelle: true } },
+      plat: { select: { id: true, libelle: true } },
     },
   });
 };
@@ -123,6 +126,7 @@ const updateLigneCommande = async (id: number, data: LigneCommandeUpdateData) =>
           libelle: true,
         },
       },
+      plat: { select: { id: true, libelle: true } },
     },
   });
 };

@@ -26,7 +26,13 @@ export const getEntrepriseController = async (req: Request, res: Response): Prom
 
 export const createEntrepriseController = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { entreprise, admin } = req.body;
+    const entreprise = typeof req.body.entreprise === 'string' ? JSON.parse(req.body.entreprise) : req.body.entreprise;
+    const admin = typeof req.body.admin === 'string' ? JSON.parse(req.body.admin) : req.body.admin;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    if (entreprise) {
+      entreprise.logo = files?.logo?.[0]?.filename || entreprise.logo || null;
+      entreprise.heroImage = files?.heroImage?.[0]?.filename || entreprise.heroImage || null;
+    }
     if (!entreprise || !admin) {
       res.status(400).json({ success: false, message: 'Données entreprise et admin requises' });
       return;
@@ -49,7 +55,15 @@ export const updateEntrepriseController = async (req: AuthenticatedRequest, res:
     if (!isSuperAdmin && !isOwnEntreprise) {
       res.status(403).json({ success: false, message: 'Accès refusé' }); return;
     }
-    const updated = await entrepriseService.update(id, req.body);
+    const data = { ...req.body };
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const arrayFields = ['jourouverture', 'heureouverture', 'jourfermeture', 'heurefermeture'];
+    for (const field of arrayFields) {
+      if (typeof data[field] === 'string') data[field] = JSON.parse(data[field]);
+    }
+    if (files?.logo?.[0]) data.logo = files.logo[0].filename;
+    if (files?.heroImage?.[0]) data.heroImage = files.heroImage[0].filename;
+    const updated = await entrepriseService.update(id, data);
     res.status(200).json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Erreur serveur', error: error.message });

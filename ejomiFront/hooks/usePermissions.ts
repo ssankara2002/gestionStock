@@ -15,6 +15,8 @@ export type Permission =
   | "fournisseur.read" | "fournisseur.create" | "fournisseur.update" | "fournisseur.delete"
   // Produits
   | "produit.read" | "produit.create" | "produit.update" | "produit.delete"
+  // Plats
+  | "plat.read" | "plat.create" | "plat.update" | "plat.delete"
   // Commandes
   | "commande.read" | "commande.create" | "commande.update" | "commande.delete"
   // Livraisons
@@ -54,6 +56,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'employe.read', 'employe.create', 'employe.update', 'employe.export',
     'fournisseur.read', 'fournisseur.create', 'fournisseur.update', 'fournisseur.delete',
     'produit.read', 'produit.create', 'produit.update', 'produit.delete',
+    'plat.read', 'plat.create', 'plat.update', 'plat.delete',
     'commande.read', 'commande.create', 'commande.update', 'commande.delete',
     'livraison.read', 'livraison.update',
     'approvisionnement.read', 'approvisionnement.create', 'approvisionnement.update', 'approvisionnement.delete',
@@ -75,6 +78,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'employe.read', 'employe.create', 'employe.update', 'employe.export',
     'fournisseur.read', 'fournisseur.create', 'fournisseur.update', 'fournisseur.delete',
     'produit.read', 'produit.create', 'produit.update', 'produit.delete',
+    'plat.read', 'plat.create', 'plat.update', 'plat.delete',
     'commande.read', 'commande.create', 'commande.update', 'commande.delete',
     'livraison.read', 'livraison.update',
     'approvisionnement.read', 'approvisionnement.create', 'approvisionnement.update', 'approvisionnement.delete',
@@ -92,6 +96,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
 
   MAGASINIER: [
     'produit.read', 'produit.create', 'produit.update',
+    'plat.read', 'plat.create', 'plat.update',
     'fournisseur.read', 'fournisseur.create', 'fournisseur.update',
     'approvisionnement.read', 'approvisionnement.create', 'approvisionnement.update', 'approvisionnement.delete',
     'approvisionnement_matiere_premiere.read', 'approvisionnement_matiere_premiere.create', 'approvisionnement_matiere_premiere.update', 'approvisionnement_matiere_premiere.delete',
@@ -105,6 +110,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   VENDEUR: [
     'commande.read', 'commande.create', 'commande.update', 'commande.delete',
     'produit.read',
+    'plat.read',
     'livraison.read', 'livraison.update',
     'user.read', 'user.create', 'user.update',
     'contact.read', 'contact.update', 'contact.delete',
@@ -117,6 +123,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'fournisseur.read', 'fournisseur.create', 'fournisseur.update',
     'commande.read', 'commande.create', 'commande.update',
     'produit.read',
+    'plat.read',
     'livraison.read',
     'approvisionnement.read',
     'production.read',
