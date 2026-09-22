@@ -186,6 +186,24 @@ export const createEmployeWithUser = async (req: AuthenticatedRequest, res: Resp
       return;
     }
 
+    const entrepriseId = req.user?.entrepriseId;
+    const parsedRoleId = roleId !== undefined && roleId !== null && roleId !== '' ? Number(roleId) : undefined;
+
+    if (parsedRoleId !== undefined) {
+      const role = await prisma.role.findUnique({
+        where: { id: parsedRoleId },
+        select: { id: true, entrepriseId: true },
+      });
+
+      if (!role || role.entrepriseId !== entrepriseId) {
+        res.status(400).json({
+          success: false,
+          message: 'Le rôle sélectionné n\'appartient pas à cette entreprise',
+        });
+        return;
+      }
+    }
+
     const employeData = {
       nom,
       prenom,
@@ -193,10 +211,10 @@ export const createEmployeWithUser = async (req: AuthenticatedRequest, res: Resp
       adresse,
       tel,
       password: password || null,
-      roleId: roleId ? parseInt(roleId) : undefined,
+      roleId: parsedRoleId,
       salaire: parseFloat(salaire),
       dateEmbauche: new Date(dateEmbauche),
-      entrepriseId: req.user?.entrepriseId,
+      entrepriseId,
     };
 
     const employe = await employeService.createEmployeWithUser(employeData);
@@ -233,6 +251,24 @@ export const updateEmployeWithUser = async (req: Request, res: Response): Promis
     const { id } = req.params;
     const { nom, prenom, email, adresse, tel, password, roleId, salaire, dateEmbauche } = req.body;
 
+    const entrepriseId = (req as any).user?.entrepriseId;
+    const parsedRoleId = roleId !== undefined && roleId !== null && roleId !== '' ? Number(roleId) : undefined;
+
+    if (parsedRoleId !== undefined) {
+      const role = await prisma.role.findUnique({
+        where: { id: parsedRoleId },
+        select: { id: true, entrepriseId: true },
+      });
+
+      if (!role || role.entrepriseId !== entrepriseId) {
+        res.status(400).json({
+          success: false,
+          message: 'Le rôle sélectionné n\'appartient pas à cette entreprise',
+        });
+        return;
+      }
+    }
+
     const employeData: any = {};
     if (nom) employeData.nom = nom;
     if (prenom) employeData.prenom = prenom;
@@ -240,10 +276,10 @@ export const updateEmployeWithUser = async (req: Request, res: Response): Promis
     if (adresse) employeData.adresse = adresse;
     if (tel) employeData.tel = tel;
     if (password) employeData.password = password;
-    if (roleId !== undefined) {
-      // Gérer le cas où roleId est une chaîne vide
-      const parsedRoleId = parseInt(roleId, 10);
-      employeData.roleId = isNaN(parsedRoleId) ? null : parsedRoleId;
+    if (parsedRoleId !== undefined) {
+      employeData.roleId = parsedRoleId;
+    } else if (roleId === '') {
+      employeData.roleId = null;
     }
     if (salaire) employeData.salaire = parseFloat(salaire);
     if (dateEmbauche) employeData.dateEmbauche = new Date(dateEmbauche);

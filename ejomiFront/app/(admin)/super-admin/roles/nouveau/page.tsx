@@ -12,10 +12,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { rolesService } from "@/services"
+import { useAuth } from "@/context/auth-provider"
 
 export default function NewSuperAdminRolePage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { entreprise } = useAuth()
   const [form, setForm] = useState({ name: "", description: "" })
   const [saving, setSaving] = useState(false)
 
@@ -27,8 +29,17 @@ export default function NewSuperAdminRolePage() {
 
     try {
       setSaving(true)
-      await rolesService.create({ name: form.name.trim(), description: form.description.trim() || undefined })
-      toast({ title: "Succès", description: "Le rôle global a été créé avec succès." })
+      if (!entreprise?.id) {
+        toast({ title: "Erreur", description: "Aucune entreprise active sélectionnée.", variant: "destructive" })
+        return
+      }
+
+      await rolesService.create({
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        entrepriseId: entreprise.id,
+      })
+      toast({ title: "Succès", description: `Le rôle a été créé pour ${entreprise.nom}.` })
       router.push("/super-admin/roles")
     } catch (error: any) {
       toast({
@@ -54,7 +65,7 @@ export default function NewSuperAdminRolePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Nouveau rôle global</CardTitle>
+          <CardTitle>Nouveau rôle pour {entreprise?.nom || "l'entreprise"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">

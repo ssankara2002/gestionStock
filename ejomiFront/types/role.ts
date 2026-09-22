@@ -13,6 +13,7 @@ export interface Role {
 export interface RoleCreateData {
   name: string
   description?: string | null
+  entrepriseId?: number | null
 }
 
 export interface RoleUpdateData extends Partial<RoleCreateData> {}

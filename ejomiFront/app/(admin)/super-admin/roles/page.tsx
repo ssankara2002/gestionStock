@@ -11,29 +11,32 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { rolesService } from "@/services"
+import { useAuth } from "@/context/auth-provider"
 import { DataPagination } from "@/components/shared/data-pagination"
 import type { Role } from "@/types"
 
 export default function SuperAdminRolesPage() {
   const { toast } = useToast()
+  const { entreprise } = useAuth()
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
   const { data: roles = [], isLoading } = useQuery({
-    queryKey: ["super-admin-roles"],
+    queryKey: ["super-admin-roles", entreprise?.id],
     queryFn: async () => {
-      const res = await rolesService.getAll()
+      const res = await rolesService.getAll(entreprise?.id)
       return res.data.data || []
     },
+    enabled: Boolean(entreprise?.id),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => rolesService.delete(String(id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["super-admin-roles"] })
-      toast({ title: "Rôle supprimé", description: "Le rôle global a bien été supprimé." })
+      toast({ title: "Rôle supprimé", description: "Le rôle de l'entreprise a bien été supprimé." })
     },
     onError: (error: any) => {
       toast({
@@ -66,9 +69,11 @@ export default function SuperAdminRolesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Shield className="h-8 w-8" />
-            Rôles globaux
+            Rôles de l'entreprise
           </h1>
-          <p className="text-muted-foreground mt-1">Gestion des rôles du Super Admin pour toutes les entreprises</p>
+          <p className="text-muted-foreground mt-1">
+            {entreprise ? `Gestion des rôles de ${entreprise.nom}` : "Chargement de l'entreprise..."}
+          </p>
         </div>
         <Button asChild>
           <Link href="/super-admin/roles/nouveau">
@@ -80,8 +85,8 @@ export default function SuperAdminRolesPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Liste des rôles globaux</CardTitle>
-          <CardDescription>{filteredRoles.length} rôle(s) global(aux)</CardDescription>
+            <CardTitle>Liste des rôles</CardTitle>
+            <CardDescription>{filteredRoles.length} rôle(s) configuré(s) pour cette entreprise</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4 relative w-full sm:w-96">
@@ -120,7 +125,7 @@ export default function SuperAdminRolesPage() {
                   {paginatedRoles.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                        Aucun rôle global trouvé.
+                        Aucun rôle trouvé pour cette entreprise.
                       </TableCell>
                     </TableRow>
                   ) : (

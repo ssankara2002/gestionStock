@@ -48,7 +48,7 @@ const DEFAULTS: EntrepriseConfig = {
   ctaSousTitre: "Créez votre espace entreprise et gérez votre stock dès aujourd'hui.",
 }
 
-const CLIENT_ROLES = ["CLIENT"]
+const ROLES_WITHOUT_DASHBOARD = ["CLIENT", "VENDEUR", "MAGASINIER", "SECRETAIRE"]
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth()
@@ -56,8 +56,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [config, setConfig] = useState<EntrepriseConfig>(DEFAULTS)
 
+  const userRole = String(user?.role?.name || "").trim().toUpperCase()
   const showDashboardBtn =
-    isAuthenticated && user?.role?.name && !CLIENT_ROLES.includes(user.role.name)
+    isAuthenticated && userRole && !ROLES_WITHOUT_DASHBOARD.includes(userRole)
 
   useEffect(() => {
     const entrepriseId = typeof window !== "undefined" ? localStorage.getItem("entrepriseId") : null

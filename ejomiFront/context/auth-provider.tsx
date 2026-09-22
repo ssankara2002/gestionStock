@@ -140,12 +140,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Données utilisateur manquantes dans la réponse")
       }
 
+      const tokenPayload = jwtDecode<UserJwtPayload>(token)
+      const tokenRole = String(tokenPayload.role || "CLIENT").trim().toUpperCase()
+      const effectiveUser = {
+        ...loggedInUser,
+        role: {
+          ...(typeof loggedInUser.role === "object" ? loggedInUser.role : {}),
+          name: tokenRole,
+        },
+      }
+
       console.log("User reçu:", loggedInUser)
       console.log("Role de l'user:", loggedInUser.role)
 
       localStorage.setItem("token", token)
       // Stocker également les données complètes de l'utilisateur incluant employe
-      localStorage.setItem("user", JSON.stringify(loggedInUser))
+      localStorage.setItem("user", JSON.stringify(effectiveUser))
 
       // Mettre à jour le cookie pour le middleware
       document.cookie = `auth_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
@@ -159,32 +169,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       handleAuthChange(token) // Centralise la logique de mise à jour
 
       // Mettre à jour l'état utilisateur avec les données complètes
-      setUser(loggedInUser)
+      setUser(effectiveUser)
 
       // Redirection après connexion selon le rôle
-      const userRole = loggedInUser?.role?.name || "CLIENT"
+      const rawUserRole = effectiveUser?.role?.name
+      const userRole = String(tokenRole || rawUserRole || "CLIENT")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toUpperCase()
+      const routingRole = userRole.replace(/[\s_-]+/g, "")
 
-      switch (userRole) {
-        case "SUPER_ADMIN":
+      if (routingRole.includes("CAISS")) {
+        router.replace("/vendeur/commandes")
+        return
+      }
+
+      switch (routingRole) {
+        case "SUPERADMIN":
         case "ADMIN":
-        case "DIRECTEUR_GENERAL":
-          router.push("/gerant/dashboard") // Accès complet
-          break
-        case "GERANT":
-          router.push("/gerant/dashboard")
+        case "DIRECTEURGENERAL":
+          router.replace("/gerant/dashboard") // Accès complet
           break
         case "MAGASINIER":
-          router.push("/magasinier/approvisionnements")
+          router.replace("/magasinier/approvisionnements")
           break
         case "VENDEUR":
-          router.push("/vendeur/commandes")
+    
+          window.location.replace("/vendeur/commandes")
           break
         case "SECRETAIRE":
-          router.push("/gerant/employes")
+          router.replace("/gerant/employes")
           break
         case "CLIENT":
         default:
-          router.push("/") // Page d'accueil pour les clients
+          router.replace("/") // Page d'accueil pour les clients
           break
       }
     } catch (error) {

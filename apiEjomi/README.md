@@ -100,3 +100,13 @@ avec `up -d --build` conserve donc les données. Ne lancez `down -v` que si vous
 voulez supprimer explicitement la base et ses volumes.
  docker exec -it maquis-db psql -U maquis_user -d gestion_maquis
 psql 
+
+cd apiEjomi
+docker compose down
+docker compose up --build -d
+docker compose ps
+curl -i http://localhost/api/health
+
+
+docker compose up -d --build api frontend
+docker restart maquis-nginx

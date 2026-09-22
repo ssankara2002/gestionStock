@@ -31,14 +31,24 @@ export const getRoleById = async (req: Request, res: Response): Promise<void> =>
 
 export const createRole = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description } = req.body;
+    const { name, description, entrepriseId } = req.body;
 
     if (!name) {
       res.status(400).json({ success: false, message: 'Le champ name est obligatoire' });
       return;
     }
 
-    const roleData = { name, description };
+    if (name === 'SUPER_ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+      res.status(403).json({ success: false, message: 'Le rôle SUPER_ADMIN est protégé' });
+      return;
+    }
+
+    const normalizedEntrepriseId = entrepriseId ?? req.user?.entrepriseId ?? null;
+    const roleData = {
+      name,
+      description,
+      entrepriseId: normalizedEntrepriseId === null || normalizedEntrepriseId === undefined ? null : Number(normalizedEntrepriseId),
+    };
     const role = await roleService.createRole(roleData);
 
     res.status(201).json({ success: true, message: 'Rôle créé avec succès', data: role });
@@ -54,15 +64,22 @@ export const createRole = async (req: Request, res: Response): Promise<void> => 
 export const updateRole = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, entrepriseId } = req.body;
 
-    const roleData = { name, description };
+    const normalizedEntrepriseId = entrepriseId ?? req.user?.entrepriseId ?? undefined;
+    const roleData = {
+      ...(name !== undefined ? { name } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(normalizedEntrepriseId !== undefined ? { entrepriseId: normalizedEntrepriseId === null ? null : Number(normalizedEntrepriseId) } : {}),
+    };
     const role = await roleService.updateRole(parseInt(id), roleData);
 
     res.status(200).json({ success: true, message: 'Rôle mis à jour avec succès', data: role });
   } catch (error: any) {
     if (error.code === 'P2025') {
       res.status(404).json({ success: false, message: 'Rôle introuvable' });
+    } else if (error.code === 'ROLE_PROTECTED') {
+      res.status(403).json({ success: false, message: 'Le rôle SUPER_ADMIN est protégé' });
     } else if (error.code === 'P2002') {
       res.status(400).json({ success: false, message: 'Un rôle avec ce nom existe déjà' });
     } else {
@@ -80,6 +97,8 @@ export const deleteRole = async (req: Request, res: Response): Promise<void> => 
   } catch (error: any) {
     if (error.code === 'P2025') {
       res.status(404).json({ success: false, message: 'Rôle introuvable' });
+    } else if (error.code === 'ROLE_PROTECTED') {
+      res.status(403).json({ success: false, message: 'Le rôle SUPER_ADMIN est protégé' });
     } else {
       res.status(500).json({ success: false, message: 'Erreur lors de la suppression du rôle', error: error.message });
     }
@@ -101,6 +120,8 @@ export const assignPermissionsToRole = async (req: Request, res: Response): Prom
   } catch (error: any) {
     if (error.code === 'P2025') {
       res.status(404).json({ success: false, message: 'Rôle ou permissions introuvables' });
+    } else if (error.code === 'ROLE_PROTECTED') {
+      res.status(403).json({ success: false, message: 'Le rôle SUPER_ADMIN est protégé' });
     } else {
       res.status(500).json({ success: false, message: 'Erreur lors de l\'assignation des permissions', error: error.message });
     }

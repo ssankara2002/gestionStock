@@ -13,7 +13,7 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY package*.json ./
 COPY . .
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:3001/api
+ARG NEXT_PUBLIC_API_URL=/api
 ARG JWT_SECRET=default_jwt_secret_change_me
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV JWT_SECRET=$JWT_SECRET

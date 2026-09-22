@@ -64,6 +64,7 @@ const PERMISSIONS = [
   { key: 'employe.read' }, { key: 'employe.create' }, { key: 'employe.update' }, { key: 'employe.delete' }, { key: 'employe.export' }, { key: 'employe.statistics' },
   { key: 'fournisseur.read' }, { key: 'fournisseur.create' }, { key: 'fournisseur.update' }, { key: 'fournisseur.delete' }, { key: 'fournisseur.export' },
   { key: 'produit.read' }, { key: 'produit.create' }, { key: 'produit.update' }, { key: 'produit.delete' }, { key: 'produit.export' }, { key: 'produit.statistics' },
+  { key: 'plat.read' }, { key: 'plat.create' }, { key: 'plat.update' }, { key: 'plat.delete' },
   { key: 'commande.read' }, { key: 'commande.create' }, { key: 'commande.update' }, { key: 'commande.delete' }, { key: 'commande.export' }, { key: 'commande.statistics' }, { key: 'commande.validate' },
   { key: 'paiement.read' }, { key: 'paiement.create' }, { key: 'paiement.update' }, { key: 'paiement.delete' }, { key: 'paiement.export' }, { key: 'paiement.statistics' }, { key: 'paiement.validate' },
   { key: 'livraison.read' }, { key: 'livraison.create' }, { key: 'livraison.update' }, { key: 'livraison.delete' }, { key: 'livraison.export' }, { key: 'livraison.assign' },
@@ -72,6 +73,7 @@ const PERMISSIONS = [
   { key: 'production.read' }, { key: 'production.create' }, { key: 'production.update' }, { key: 'production.delete' }, { key: 'production.export' }, { key: 'production.statistics' },
   { key: 'matiere_premiere.read' }, { key: 'matiere_premiere.create' }, { key: 'matiere_premiere.update' }, { key: 'matiere_premiere.delete' }, { key: 'matiere_premiere.export' },
   { key: 'absence.read' }, { key: 'absence.create' }, { key: 'absence.update' }, { key: 'absence.delete' }, { key: 'absence.export' }, { key: 'absence.statistics' },
+  { key: 'client.read' }, { key: 'client.create' }, { key: 'client.update' }, { key: 'client.delete' }, { key: 'client.export' }, { key: 'client.statistics' },
   { key: 'conge.read' }, { key: 'conge.create' }, { key: 'conge.update' }, { key: 'conge.delete' }, { key: 'conge.approve' }, { key: 'conge.reject' }, { key: 'conge.export' },
   { key: 'salaire_paiement.read' }, { key: 'salaire_paiement.create' }, { key: 'salaire_paiement.update' }, { key: 'salaire_paiement.delete' }, { key: 'salaire_paiement.export' },
   { key: 'transaction.read' }, { key: 'transaction.create' }, { key: 'transaction.update' }, { key: 'transaction.delete' }, { key: 'transaction.export' }, { key: 'transaction.statistics' },
@@ -139,11 +141,29 @@ async function assignRolePermissions(roles: any, allPerms: any[]) {
     },
   });
 
+  for (const role of [roles.CAISSIER, roles.CAISSIERE]) {
+    if (!role) continue;
+    await prisma.role.update({
+      where: { id: role.id },
+      data: {
+        permissions: {
+          set: getPerms(allPerms, [
+            'commande.read', 'commande.create', 'commande.update',
+              'produit.read', 'plat.read', 'fournisseur.read', 'approvisionnement.read', 'user.read', 'client.read',
+          ]),
+        },
+      },
+    });
+  }
+
   await prisma.role.update({
     where: { id: roles.CLIENT.id },
     data: {
       permissions: {
-        set: getPerms(allPerms, ['produit.read', 'commande.read', 'commande.create', 'paiement.read', 'paiement.create']),
+        set: getPerms(allPerms, [
+          'client.read', 'client.update',
+          'produit.read', 'commande.read', 'commande.create', 'paiement.read', 'paiement.create',
+        ]),
       },
     },
   });
@@ -195,7 +215,7 @@ async function seedEntrepriseComplete(config: {
   console.log(`  🏢 ${entreprise.nom}`);
 
   // 2. Rôles
-  const roleNames = ['ADMIN', 'DIRECTEUR_GENERAL', 'GERANT', 'VENDEUR', 'MAGASINIER', 'SECRETAIRE', 'CLIENT'];
+  const roleNames = ['ADMIN', 'DIRECTEUR_GENERAL', 'GERANT', 'VENDEUR', 'MAGASINIER', 'CAISSIER', 'CAISSIERE', 'SECRETAIRE', 'CLIENT'];
   const rolesArr = await Promise.all(
     roleNames.map(n => upsertRole(n, n, entreprise.id))
   );

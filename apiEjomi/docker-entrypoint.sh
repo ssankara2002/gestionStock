@@ -16,19 +16,17 @@ for i in 1 2 3 4 5; do
     echo "⏳ Nouvelle tentative dans 5 secondes..."
     sleep 5
   else
-    echo "❌ Échec de la synchronisation après 5 tentatives"
-    exit 1
+    echo "⚠️ Migrations non appliquées après 5 tentatives, mais on continue le démarrage"
   fi
 done
 
 echo "🔧 Génération du client Prisma..."
 npx prisma generate
 
-echo "🌱 Exécution du seed de production..."
-if ! npx tsx prisma/seed-production.ts; then
-  echo "❌ Seed de production échoué, arrêt de l'API"
-  exit 1
-fi
+#echo "🌱 Exécution du seed de production..."
+#if ! npx tsx prisma/seed-production.ts; then
+ # echo "⚠️ Seed de production non bloquant, on continue le démarrage"
+#fi
 
 echo "🚀 Démarrage de l'application..."
 exec npm start

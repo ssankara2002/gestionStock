@@ -170,14 +170,7 @@ export default function LoginPage() {
                   )}
                 </Formik>
               </CardContent>
-              <CardFooter>
-                <p className="text-center text-sm text-muted-foreground w-full">
-                  Vous n&apos;avez pas de compte?{" "}
-                  <Link href="/auth/register" className="text-primary hover:underline">
-                    S&apos;inscrire
-                  </Link>
-                </p>
-              </CardFooter>
+            
             </Card>
           ) : (
             <Card className="p-6 sm:p-8 shadow-lg">

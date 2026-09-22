@@ -12,11 +12,13 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { rolesService } from "@/services"
+import { useAuth } from "@/context/auth-provider"
 
 export default function EditSuperAdminRolePage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
+  const { entreprise } = useAuth()
   const [form, setForm] = useState({ name: "", description: "" })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -53,8 +55,9 @@ export default function EditSuperAdminRolePage() {
       await rolesService.update(String(params.id), {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
+        entrepriseId: entreprise?.id,
       })
-      toast({ title: "Succès", description: "Le rôle global a été mis à jour." })
+      toast({ title: "Succès", description: "Le rôle de l'entreprise a été mis à jour." })
       router.push("/super-admin/roles")
     } catch (error: any) {
       toast({
@@ -84,7 +87,7 @@ export default function EditSuperAdminRolePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Modifier le rôle</CardTitle>
+          <CardTitle>Modifier le rôle de {entreprise?.nom || "l'entreprise"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
