@@ -50,6 +50,11 @@ const DEFAULTS: EntrepriseConfig = {
 
 const ROLES_WITHOUT_DASHBOARD = ["CLIENT", "VENDEUR", "MAGASINIER", "SECRETAIRE"]
 
+const getDashboardLink = (role: string) => {
+  if (role === "CAISSIER") return "/vendeur/commandes"
+  return "/gerant/dashboard"
+}
+
 export default function Home() {
   const { user, isAuthenticated } = useAuth()
   const [featuredProducts, setFeaturedProducts] = useState<Produit[]>([])
@@ -109,7 +114,7 @@ export default function Home() {
                 </Button>
                 {showDashboardBtn && (
                   <Button asChild size="lg" variant="secondary">
-                    <Link href="/gerant/dashboard">Tableau de bord</Link>
+                    <Link href={getDashboardLink(userRole)}>Tableau de bord</Link>
                   </Button>
                 )}
               </div>
