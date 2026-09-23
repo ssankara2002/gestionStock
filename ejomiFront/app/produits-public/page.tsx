@@ -77,7 +77,7 @@ export default function ProduitsPublicPage() {
           ) : (
             <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:gap-12">
               {filteredProducts.map((product) => {
-                const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:3000"
+                const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost"
                 const imageUrl = product.image
                   ? (product.image.startsWith("http") ? product.image : `${baseUrl}/uploads/${product.image}`)
                   : "/placeholder.svg?height=300&width=400"
