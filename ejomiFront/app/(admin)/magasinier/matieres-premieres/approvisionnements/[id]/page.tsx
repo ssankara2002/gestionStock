@@ -36,7 +36,7 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
         // Charger le fournisseur
         if (approData.fournisseurId) {
           const fournRes = await fournisseurService.getById(approData.fournisseurId)
-          setFournisseur(fournRes.data)
+          setFournisseur((fournRes.data as any).data || fournRes.data)
         }
 
         // Charger tous les produits
