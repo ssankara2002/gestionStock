@@ -42,6 +42,8 @@ export type Permission =
   | "transfert.create"
   // Contact
   | "contact.read" | "contact.update" | "contact.delete"
+  // Clients (clients are users with the CLIENT role)
+  | "client.read" | "client.create" | "client.update" | "client.delete" | "client.export" | "client.statistics"
 
 /**
  * Mapping des rôles vers leurs permissions
@@ -49,6 +51,7 @@ export type Permission =
  */
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ADMIN: ["*"] as any,
+  SUPER_ADMIN: ["*"] as any,
 
   DIRECTEUR_GENERAL: [
     'user.read', 'user.create', 'user.update', 'user.delete',
@@ -115,6 +118,15 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'user.read', 'user.create', 'user.update',
     'contact.read', 'contact.update', 'contact.delete',
     'inventaire.read', 'inventaire.create', 'inventaire.update',
+  ],
+
+  CAISSIER: [
+    'commande.read', 'commande.create', 'commande.update',
+    'produit.read', 'plat.read', 'fournisseur.read', 'approvisionnement.read', 'user.read', 'client.read',
+  ],
+  CAISSIERE: [
+    'commande.read', 'commande.create', 'commande.update',
+    'produit.read', 'plat.read', 'fournisseur.read', 'approvisionnement.read', 'user.read', 'client.read',
   ],
 
   SECRETAIRE: [

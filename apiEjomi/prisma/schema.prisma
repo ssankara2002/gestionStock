@@ -41,6 +41,7 @@ model Entreprise {
   updatedAt   DateTime @updatedAt
   users              User[]
   roles              Role[]
+  permissions        Permission[]
   userEntreprises    UserEntreprise[]
   produits           Produit[]
   fournisseurs       Fournisseur[]
@@ -110,10 +111,14 @@ model Role {
 }
 
 model Permission {
-  id          Int     @id @default(autoincrement())
-  key         String  @unique
-  description String?
-  roles       Role[]  @relation("RolesOnPermissions")
+  id           Int       @id @default(autoincrement())
+  key          String
+  description  String?
+  entrepriseId Int?
+  entreprise   Entreprise? @relation(fields: [entrepriseId], references: [id])
+  roles        Role[]    @relation("RolesOnPermissions")
+
+  @@unique([key, entrepriseId])
 }
 
 // ─────────────────────────────────────────────
@@ -202,18 +207,22 @@ model Produit {
 }
 
 model Plat {
-  id                Int         @id @default(autoincrement())
+  id                Int           @id @default(autoincrement())
   libelle           String
   description       String?
   image             String?
+  categorie         CategoriePlat
   prixVenteUnitaire Float
   entrepriseId      Int?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  entreprise        Entreprise? @relation(fields: [entrepriseId], references: [id])
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  entreprise        Entreprise?   @relation(fields: [entrepriseId], references: [id])
   lignesCommande    LigneCommande[]
 
   @@index([libelle])
+  @@index([categorie])
   @@index([entrepriseId])
 }
 
@@ -583,3 +592,11 @@ enum ContactStatut {
   TRAITE
   ARCHIVE
 }
+
+enum CategoriePlat {
+  LIQUIDE
+  SNACK
+  REPAS
+}
+
+

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Save, Trash2 } from "lucide-react"
+import { useAuth } from "@/context/auth-provider"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
@@ -22,6 +23,7 @@ import { employeSchema, type EmployeFormValues } from "@/lib/validations"
 export default function ModifierEmployePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { toast } = useToast()
+  const { entreprise } = useAuth()
   const resolvedParams = use(params)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -57,7 +59,7 @@ export default function ModifierEmployePage({ params }: { params: Promise<{ id: 
         setLoading(true)
         const [employeRes, rolesRes] = await Promise.all([
           employesService.getById(resolvedParams.id),
-          rolesService.getAll(),
+          rolesService.getAll(entreprise?.id),
         ])
 
         const employeData = employeRes.data.data
@@ -66,10 +68,8 @@ export default function ModifierEmployePage({ params }: { params: Promise<{ id: 
         }
 
         setEmploye(employeData)
-        const filteredRoles = rolesRes.data.data.filter((role: any) =>
-          role.name === "ADMIN" || role.name === "SECRETAIRE"
-        )
-        setRoles(filteredRoles)
+        const entrepriseRoles = rolesRes.data.data || []
+        setRoles(entrepriseRoles)
 
         reset({
           nom: employeData.user.nom || "",
@@ -90,7 +90,7 @@ export default function ModifierEmployePage({ params }: { params: Promise<{ id: 
       }
     }
     fetchData()
-  }, [resolvedParams.id, reset, toast])
+  }, [resolvedParams.id, reset, toast, entreprise?.id])
 
   const onSubmit = async (data: EmployeFormValues) => {
     setIsSubmitting(true)
@@ -215,7 +215,12 @@ export default function ModifierEmployePage({ params }: { params: Promise<{ id: 
                               isDisabled={loadingRoles}
                               isClearable
                               value={field.value
-                                ? { value: field.value, label: roles.find(r => r.id.toString() === field.value)?.name ?? field.value }
+                                ? {
+                                    value: field.value,
+                                    label: roles.find(r => r.id.toString() === field.value)?.description
+                                      ? `${roles.find(r => r.id.toString() === field.value)?.name} - ${roles.find(r => r.id.toString() === field.value)?.description}`
+                                      : roles.find(r => r.id.toString() === field.value)?.name ?? "Rôle introuvable",
+                                  }
                                 : null}
                               onChange={(opt: any) => field.onChange(opt?.value ?? undefined)}
                               options={roles.map(r => ({ value: r.id.toString(), label: r.name }))}

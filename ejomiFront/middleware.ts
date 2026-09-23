@@ -57,6 +57,32 @@ const ROLE_ACCESS = {
       "/profil",
     ],
   },
+  CAISSIER: {
+    name: "CAISSIER",
+    allowedPaths: [
+      "/vendeur/commandes",
+      "/vendeur/clients",
+      "/plats",
+      "/magasinier/fournisseurs",
+      "/magasinier/approvisionnements",
+      "/magasinier/rapport-lots",
+      "/produits",
+      "/profil",
+    ],
+  },
+  CAISSIERE: {
+    name: "CAISSIERE",
+    allowedPaths: [
+      "/vendeur/commandes",
+      "/vendeur/clients",
+      "/plats",
+      "/magasinier/fournisseurs",
+      "/magasinier/approvisionnements",
+      "/magasinier/rapport-lots",
+      "/produits",
+      "/profil",
+    ],
+  },
   SECRETAIRE: {
     name: "SECRETAIRE",
     allowedPaths: [
@@ -144,7 +170,7 @@ export async function middleware(request: NextRequest) {
   // Vérifier et décoder le token (optionnel - le backend fait la vraie vérification)
   try {
     const { payload } = await jwtVerify<UserPayload>(token, secretKey)
-    const userRole = payload.role
+    const userRole = String(payload.role || "").trim().toUpperCase()
 
     console.log(`🔍 Middleware - Rôle: ${userRole}, Path: ${pathname}`)
 

@@ -2,7 +2,15 @@ import apiClient from "./api-client"
 import type { Permission, PermissionCreateData, PermissionUpdateData, ApiResponse } from "../types"
 
 export const permissionsService = {
-  getAll: () => apiClient.get<ApiResponse<Permission[]>>("/permissions"),
+  getAll: (entrepriseId?: number | null) => {
+    if (entrepriseId === undefined || entrepriseId === null) {
+      return apiClient.get<ApiResponse<Permission[]>>("/permissions")
+    }
+
+    return apiClient.get<ApiResponse<Permission[]>>("/permissions", {
+      params: { entrepriseId },
+    })
+  },
 
   getById: (id: string) => apiClient.get<ApiResponse<Permission>>(`/permissions/${id}`),
 

@@ -6,7 +6,9 @@ export const getAllPlats = async (req: AuthenticatedRequest, res: Response): Pro
   try {
     const entrepriseId = req.user?.entrepriseId
       ?? (req.query.entrepriseId ? parseInt(req.query.entrepriseId as string, 10) : undefined);
-    const plats = await platService.getAllPlats(entrepriseId);
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
+    const plats = await platService.getAllPlats(entrepriseId, page, limit);
     res.status(200).json({ success: true, data: plats });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || 'Erreur interne du serveur.' });

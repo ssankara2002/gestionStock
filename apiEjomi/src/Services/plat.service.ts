@@ -2,11 +2,27 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const getAllPlats = async (entrepriseId?: number) => {
-  return prisma.plat.findMany({
-    where: entrepriseId ? { entrepriseId } : {},
-    orderBy: { updatedAt: 'desc' },
-  });
+const getAllPlats = async (entrepriseId?: number, page = 1, limit = 20) => {
+  const skip = (page - 1) * limit;
+  const [data, total] = await prisma.$transaction([
+    prisma.plat.findMany({
+      where: entrepriseId ? { entrepriseId } : {},
+      skip,
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
+    }),
+    prisma.plat.count({
+      where: entrepriseId ? { entrepriseId } : {},
+    }),
+  ]);
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
 };
 
 const getPlatById = async (id: number, entrepriseId?: number) => {

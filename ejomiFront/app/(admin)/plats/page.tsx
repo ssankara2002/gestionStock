@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { PermissionGuard } from "@/components/permissions/PermissionGuard"
 import { usePermissions } from "@/hooks/usePermissions"
 import { platService } from "@/services"
+import { DataPagination, type PaginationInfo } from "@/components/shared/data-pagination"
 import type { Plat } from "@/types/plat"
 
 const imageUrl = (image?: string | null) => {
@@ -26,11 +27,29 @@ export default function PlatsPage() {
   const { hasPermission } = usePermissions()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const itemsPerPage = 10
 
-  const { data: plats = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["plats"],
-    queryFn: async () => (await platService.getAll()).data.data,
+    queryFn: async () => (await platService.getAll(1, 1000)).data.data,
   })
+
+  const allPlats = data?.data ?? []
+  const filteredPlats = allPlats.filter((plat: Plat) =>
+    `${plat.libelle} ${plat.description || ""}`.toLowerCase().includes(search.toLowerCase()),
+  )
+  const totalPages = Math.max(1, Math.ceil(filteredPlats.length / itemsPerPage))
+  const safePage = Math.min(page, totalPages)
+  const plats = filteredPlats.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage)
+  const pagination: PaginationInfo | null = filteredPlats.length > 0 ? {
+    page: safePage,
+    limit: itemsPerPage,
+    total: filteredPlats.length,
+    totalPages,
+    hasNext: safePage < totalPages,
+    hasPrev: safePage > 1,
+  } : null
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => platService.delete(String(id)),
@@ -60,30 +79,33 @@ export default function PlatsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Catalogue des plats</CardTitle>
-          <CardDescription>{plats.length} plat(s) enregistré(s)</CardDescription>
+          <CardDescription>{data?.total ?? 0} plat(s) enregistré(s)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 max-w-sm"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un plat..." /></div>
+          <div className="mb-4 max-w-sm"><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Rechercher un plat..." /></div>
           {isLoading ? <div className="py-12 text-center text-muted-foreground">Chargement...</div> : (
-            <div className="rounded-md border overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow><TableHead>Image</TableHead><TableHead>Plat</TableHead><TableHead>Description</TableHead><TableHead>Prix de vente</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun plat trouvé.</TableCell></TableRow> : filtered.map((plat: Plat) => (
-                    <TableRow key={plat.id}>
-                      <TableCell><img src={imageUrl(plat.image)} alt={plat.libelle} className="h-14 w-14 rounded object-cover" /></TableCell>
-                      <TableCell className="font-medium">{plat.libelle}</TableCell>
-                      <TableCell className="max-w-xs text-muted-foreground">{plat.description || "-"}</TableCell>
-                      <TableCell>{plat.prixVenteUnitaire} FCFA</TableCell>
-                      <TableCell className="text-right"><div className="flex justify-end gap-2">
-                        {hasPermission("plat.update") && <Button variant="outline" size="sm" asChild><Link href={`/plats/${plat.id}/modifier`}><Edit className="mr-1 h-4 w-4" />Modifier</Link></Button>}
-                        {hasPermission("plat.delete") && <Button variant="destructive" size="sm" onClick={() => { if (confirm(`Supprimer le plat « ${plat.libelle} » ?`)) deleteMutation.mutate(plat.id) }}><Trash2 className="mr-1 h-4 w-4" />Supprimer</Button>}
-                      </div></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead>Image</TableHead><TableHead>Plat</TableHead><TableHead>Description</TableHead><TableHead>Prix de vente</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {plats.length === 0 ? <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun plat trouvé.</TableCell></TableRow> : plats.map((plat: Plat) => (
+                      <TableRow key={plat.id}>
+                        <TableCell><img src={imageUrl(plat.image)} alt={plat.libelle} className="h-14 w-14 rounded object-cover" /></TableCell>
+                        <TableCell className="font-medium">{plat.libelle}</TableCell>
+                        <TableCell className="max-w-xs text-muted-foreground">{plat.description || "-"}</TableCell>
+                        <TableCell>{plat.prixVenteUnitaire} FCFA</TableCell>
+                        <TableCell className="text-right"><div className="flex justify-end gap-2">
+                          {hasPermission("plat.update") && <Button variant="outline" size="sm" asChild><Link href={`/plats/${plat.id}/modifier`}><Edit className="mr-1 h-4 w-4" />Modifier</Link></Button>}
+                          {hasPermission("plat.delete") && <Button variant="destructive" size="sm" onClick={() => { if (confirm(`Supprimer le plat « ${plat.libelle} » ?`)) deleteMutation.mutate(plat.id) }}><Trash2 className="mr-1 h-4 w-4" />Supprimer</Button>}
+                        </div></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <DataPagination pagination={pagination} onPageChange={setPage} />
+            </>
           )}
         </CardContent>
       </Card>

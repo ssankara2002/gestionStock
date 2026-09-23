@@ -2,7 +2,15 @@ import apiClient from "./api-client"
 import type { Role, RoleCreateData, RoleUpdateData, ApiResponse } from "../types"
 
 export const rolesService = {
-  getAll: () => apiClient.get<ApiResponse<Role[]>>("/roles"),
+  getAll: (entrepriseId?: number | null) => {
+    if (entrepriseId === undefined || entrepriseId === null) {
+      return apiClient.get<ApiResponse<Role[]>>("/roles")
+    }
+
+    return apiClient.get<ApiResponse<Role[]>>("/roles", {
+      params: { entrepriseId },
+    })
+  },
 
   getById: (id: string) => apiClient.get<ApiResponse<Role>>(`/roles/${id}`),
 

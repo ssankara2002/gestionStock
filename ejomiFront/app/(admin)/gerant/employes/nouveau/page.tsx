@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { ArrowLeft, Save } from "lucide-react"
+import { useAuth } from "@/context/auth-provider"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
@@ -22,6 +23,7 @@ export default function NouvelEmployePage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { entreprise } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [roles, setRoles] = useState<Role[]>([])
   const [loadingRoles, setLoadingRoles] = useState(true)
@@ -51,11 +53,8 @@ export default function NouvelEmployePage() {
     const fetchRoles = async () => {
       try {
         setLoadingRoles(true)
-        const response = await rolesService.getAll()
-        const filteredRoles = response.data.data.filter((role: Role) =>
-          role.name === "ADMIN" || role.name === "SECRETAIRE"
-        )
-        setRoles(filteredRoles)
+        const response = await rolesService.getAll(entreprise?.id)
+        setRoles(response.data.data || [])
       } catch (err) {
         toast({ title: "Erreur", description: "Erreur lors du chargement des rôles", variant: "destructive" })
       } finally {
@@ -63,7 +62,7 @@ export default function NouvelEmployePage() {
       }
     }
     fetchRoles()
-  }, [toast])
+  }, [toast, entreprise?.id])
 
   const onSubmit = async (data: EmployeFormValues) => {
     setIsSubmitting(true)

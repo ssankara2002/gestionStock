@@ -3,8 +3,8 @@ import type { InventaireInput } from "../types/inventaire"
 
 export const inventaireService = {
   // Récupérer la liste des produits pour l'inventaire
-  getProduits: (lieu?: "MAGASIN" | "BOUTIQUE") =>
-    apiClient.get("/inventaire/produits", { params: lieu ? { lieu } : undefined }),
+  getProduits: (lieu?: "MAGASIN" | "BOUTIQUE", page = 1, limit = 20) =>
+    apiClient.get("/inventaire/produits", { params: { ...(lieu ? { lieu } : {}), page, limit } }),
 
   // Effectuer un inventaire et ajuster les stocks
   ajusterStock: (data: InventaireInput & { lieu?: string }) =>

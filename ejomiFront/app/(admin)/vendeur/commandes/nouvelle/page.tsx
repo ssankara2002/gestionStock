@@ -18,9 +18,10 @@ import { Separator } from "@/components/ui/separator"
 import { Footer } from "@/components/layout/footer"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/context/auth-provider"
-import { produitService, userService } from "@/services"
+import { produitService, userService, platService } from "@/services"
 import type { User } from "@/types/user"
 import type { CommandeCreateData, LigneCommandeInput } from "@/types/commande"
+import type { Plat } from "@/types/plat"
 import { ModePaiement } from "@/types/paiement"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -51,7 +52,9 @@ export default function NouvelleCommandePage() {
   const { user } = useAuth()
 
   const [products, setProducts] = useState<Produit[]>([])
+  const [plats, setPlats] = useState<Plat[]>([])
   const [clients, setClients] = useState<User[]>([])
+  const [catalogueType, setCatalogueType] = useState<"PRODUIT" | "PLAT">("PRODUIT")
 
   // État local pour gérer les lignes de commande avant soumission
   interface LigneCommandeLocal extends LigneCommandeInput {
@@ -117,16 +120,23 @@ export default function NouvelleCommandePage() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [productsRes, usersRes] = await Promise.all([produitService.getAll(), userService.getAll()])
+        const [productsRes, platsRes, usersRes] = await Promise.all([
+          produitService.getAll(),
+          platService.getAll(),
+          userService.getAll(),
+        ])
         // @ts-ignore - API retourne { success, data }
         setProducts(productsRes.data.data || productsRes.data || [])
+        // @ts-ignore - API retourne { success, data }
+        const platsData = platsRes.data.data?.data || platsRes.data.data || platsRes.data || []
+        setPlats(platsData)
         // Filtrer pour ne garder que les clients
         const allClients = usersRes.data.data.filter((u: User) => u.role?.name === "CLIENT" || !u.role)
         setClients(allClients)
       } catch (error) {
         toast({
           title: "Erreur de chargement",
-          description: "Impossible de charger les produits ou les clients.",
+          description: "Impossible de charger les produits, les plats ou les clients.",
           variant: "destructive",
         })
       }
@@ -134,11 +144,9 @@ export default function NouvelleCommandePage() {
     loadInitialData()
   }, [toast])
 
-  // Filtrer les produits en fonction du terme de recherche
-  const filteredProducts = products.filter(
-    (product) =>
-      product.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase())),
+  const filteredItems = (catalogueType === "PRODUIT" ? products : plats).filter((item: any) =>
+    item.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
   // Calculer le montant total
@@ -156,25 +164,53 @@ export default function NouvelleCommandePage() {
   }, [lignesCommande, reductionGlobale])
 
   // Ajouter une ligne de commande
-  const ajouterLigne = (selectedProductId: string) => {
-    if (!selectedProductId) {
+  const ajouterLigne = (selectedItemId: string) => {
+    if (!selectedItemId) {
       toast({
         title: "Erreur",
-        description: "Veuillez sélectionner un produit",
+        description: `Veuillez sélectionner un ${catalogueType === "PRODUIT" ? "produit" : "plat"}`,
         variant: "destructive",
       })
       return
     }
 
-    const product = products.find((p) => p.id.toString() === selectedProductId)
+    if (catalogueType === "PLAT") {
+      const plat = plats.find((p) => p.id.toString() === selectedItemId)
+      if (!plat) return
+
+      const ligneExistante = lignesCommande.find((ligne) => ligne.platId?.toString() === selectedItemId)
+      if (ligneExistante) {
+        setLignesCommande((prevLignes) =>
+          prevLignes.map((ligne) =>
+            ligne.platId?.toString() === selectedItemId
+              ? { ...ligne, quantite: ligne.quantite + selectedQuantity }
+              : ligne,
+          ),
+        )
+      } else {
+        const nouvelleLigne: LigneCommandeLocal = {
+          id: Math.random().toString(36).substring(2, 15),
+          platId: Number.parseInt(selectedItemId),
+          quantite: selectedQuantity,
+          prixUnitaire: Number(plat.prixVenteUnitaire),
+          reduction: 0,
+        }
+        setLignesCommande((prevLignes) => [...prevLignes, nouvelleLigne])
+      }
+
+      setSelectedQuantity(1)
+      setSearchTerm("")
+      toast({ title: "Plat ajouté", description: `${plat.libelle} a été ajouté à la commande` })
+      return
+    }
+
+    const product = products.find((p) => p.id.toString() === selectedItemId)
     if (!product) return
 
-    // Vérifier si le produit est déjà dans la commande
-    const ligneExistante = lignesCommande.find((ligne) => ligne.produitId.toString() === selectedProductId)
+    const ligneExistante = lignesCommande.find((ligne) => ligne.produitId?.toString() === selectedItemId)
     const quantiteDejaDansCommande = ligneExistante ? ligneExistante.quantite : 0
     const nouvelleQuantiteTotale = quantiteDejaDansCommande + selectedQuantity
 
-    // Vérifier le stock disponible
     if (nouvelleQuantiteTotale > (product.stockBoutique?.quantite ?? 0)) {
       toast({
         title: "Stock insuffisant",
@@ -185,19 +221,17 @@ export default function NouvelleCommandePage() {
     }
 
     if (ligneExistante) {
-      // Mettre à jour la quantité si le produit existe déjà
       setLignesCommande((prevLignes) =>
         prevLignes.map((ligne) =>
-          ligne.produitId.toString() === selectedProductId
+          ligne.produitId?.toString() === selectedItemId
             ? { ...ligne, quantite: ligne.quantite + selectedQuantity }
             : ligne,
         ),
       )
     } else {
-      // Ajouter une nouvelle ligne
       const nouvelleLigne: LigneCommandeLocal = {
         id: Math.random().toString(36).substring(2, 15),
-        produitId: Number.parseInt(selectedProductId),
+        produitId: Number.parseInt(selectedItemId),
         quantite: selectedQuantity,
         prixUnitaire: Number(product.prixDeVenteUnitaire),
         reduction: 0,
@@ -206,7 +240,6 @@ export default function NouvelleCommandePage() {
       setLignesCommande((prevLignes) => [...prevLignes, nouvelleLigne])
     }
 
-    // Réinitialiser les champs
     setSelectedQuantity(1)
     setSearchTerm("")
 
@@ -272,7 +305,7 @@ export default function NouvelleCommandePage() {
     if (!lignesCommande.length) {
       toast({
         title: "Erreur",
-        description: "Veuillez ajouter au moins un produit à la commande",
+        description: "Veuillez ajouter au moins un produit ou plat à la commande",
         variant: "destructive",
       })
       return
@@ -598,35 +631,56 @@ export default function NouvelleCommandePage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="flex gap-2 rounded-md border p-1">
+                        <Button
+                          type="button"
+                          variant={catalogueType === "PRODUIT" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCatalogueType("PRODUIT")}
+                        >
+                          Produits
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={catalogueType === "PLAT" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCatalogueType("PLAT")}
+                        >
+                          Plats
+                        </Button>
+                      </div>
+
                       <div className="relative flex-1 w-full">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Rechercher un produit..."
+                          placeholder={catalogueType === "PRODUIT" ? "Rechercher un produit..." : "Rechercher un plat..."}
                           className="pl-9"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                         />
                         {searchTerm && (
                           <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                            {filteredProducts.length > 0 ? (
-                              filteredProducts.map((product) => (
+                            {filteredItems.length > 0 ? (
+                              filteredItems.map((item: any) => (
                                 <div
-                                  key={product.id}
+                                  key={item.id}
                                   className="p-2 hover:bg-muted cursor-pointer"
                                   onClick={() => {
-                                    setSearchTerm(product.libelle)
-                                    ajouterLigne(product.id.toString())
+                                    setSearchTerm(item.libelle)
+                                    ajouterLigne(item.id.toString())
                                   }}
                                 >
-                                  <p className="font-medium">{product.libelle}</p>
+                                  <p className="font-medium">{item.libelle}</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {product.prixDeVenteUnitaire} FCFA - Stock boutique:{" "}
-                                    {product.stockBoutique?.quantite ?? 0}
+                                    {item.prixDeVenteUnitaire ?? item.prixVenteUnitaire} FCFA
+                                    {catalogueType === "PRODUIT" ? ` - Stock boutique: ${item.stockBoutique?.quantite ?? 0}` : ""}
                                   </p>
                                 </div>
                               ))
                             ) : (
-                              <div className="p-2 text-center text-sm text-muted-foreground">Aucun produit trouvé</div>
+                              <div className="p-2 text-center text-sm text-muted-foreground">
+                                Aucun {catalogueType === "PRODUIT" ? "produit" : "plat"} trouvé
+                              </div>
                             )}
                           </div>
                         )}
@@ -674,15 +728,15 @@ export default function NouvelleCommandePage() {
                           <TableBody>
                             {lignesCommande.map((ligne) => {
                               const product = products.find((p) => p.id === ligne.produitId)
-                              if (!product) return null
-
+                              const plat = plats.find((p) => p.id === ligne.platId)
+                              const itemLabel = product?.libelle ?? plat?.libelle ?? "Élément introuvable"
                               const prixTotal = ligne.prixUnitaire * ligne.quantite
                               const total = Math.max(0, prixTotal - ligne.reduction)
 
                               return (
                                 <TableRow key={ligne.id}>
                                   <TableCell className="font-medium">
-                                    {product?.libelle || "Produit introuvable"}
+                                    {itemLabel}
                                   </TableCell>
                                   <TableCell className="text-right">{ligne.prixUnitaire.toFixed(2)} FCFA</TableCell>
                                   <TableCell>

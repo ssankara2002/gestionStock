@@ -45,7 +45,7 @@ export function AssignPermissionsDialog({
   const loadPermissions = async () => {
     try {
       setLoadingPermissions(true)
-      const response = await permissionsService.getAll()
+      const response = await permissionsService.getAll(role.entrepriseId ?? null)
       setPermissions(response.data.data || [])
 
       // Pré-sélectionner les permissions actuelles du rôle

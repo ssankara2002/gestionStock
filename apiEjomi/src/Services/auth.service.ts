@@ -123,7 +123,17 @@ const login = async (email: string, password: string, entrepriseId?: number): Pr
   );
 
   const { password: _, ...userWithoutPassword } = user;
-  return { token, user: { ...userWithoutPassword, entrepriseId: resolvedEntrepriseId } };
+  return {
+    token,
+    user: {
+      ...userWithoutPassword,
+      roleId,
+      entrepriseId: resolvedEntrepriseId,
+      role: user.role
+        ? { ...user.role, id: roleId, name: roleName }
+        : { id: roleId, name: roleName },
+    },
+  };
 };
 
 // Inscription d'un employé/utilisateur dans une entreprise existante

@@ -5,15 +5,20 @@ const prisma = new PrismaClient();
 interface PermissionCreateData {
   key: string;
   description?: string;
+  entrepriseId?: number | null;
 }
 
 interface PermissionUpdateData {
   key?: string;
   description?: string;
+  entrepriseId?: number | null;
 }
 
-const getAllPermissions = async () => {
+const getAllPermissions = async (entrepriseId?: number | null) => {
+  const where = entrepriseId === undefined || entrepriseId === null ? { entrepriseId: null } : { entrepriseId };
+
   return await prisma.permission.findMany({
+    where,
     include: {
       roles: {
         select: {
@@ -42,7 +47,11 @@ const getPermissionById = async (id: number) => {
 
 const createPermission = async (data: PermissionCreateData) => {
   return await prisma.permission.create({
-    data,
+    data: {
+      key: data.key,
+      description: data.description,
+      entrepriseId: data.entrepriseId ?? null,
+    },
     include: {
       roles: {
         select: {
@@ -57,7 +66,11 @@ const createPermission = async (data: PermissionCreateData) => {
 const updatePermission = async (id: number, data: PermissionUpdateData) => {
   return await prisma.permission.update({
     where: { id },
-    data,
+    data: {
+      ...(data.key !== undefined ? { key: data.key } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.entrepriseId !== undefined ? { entrepriseId: data.entrepriseId ?? null } : {}),
+    },
     include: {
       roles: {
         select: {

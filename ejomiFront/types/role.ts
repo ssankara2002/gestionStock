@@ -5,6 +5,7 @@ export interface Role {
   id: number
   name: string
   description?: string | null
+  entrepriseId?: number | null
   users?: any[] // Éviter la dépendance circulaire
   permissions?: Permission[]
 }
@@ -12,6 +13,7 @@ export interface Role {
 export interface RoleCreateData {
   name: string
   description?: string | null
+  entrepriseId?: number | null
 }
 
 export interface RoleUpdateData extends Partial<RoleCreateData> {}
