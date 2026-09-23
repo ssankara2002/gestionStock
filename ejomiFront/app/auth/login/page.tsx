@@ -37,7 +37,7 @@ export default function LoginPage() {
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
   const [selectingId, setSelectingId] = useState<number | null>(null)
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:3002"
+  const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost"
 
   const handleCredentialsSubmit = async (
     values: { email: string; password: string },

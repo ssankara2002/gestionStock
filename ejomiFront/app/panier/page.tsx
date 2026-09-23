@@ -75,7 +75,7 @@ export default function CartPage() {
                               (item.product as any)?.image
                                 ? ((item.product as any).image.startsWith("http")
                                     ? (item.product as any).image
-                                    : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${(item.product as any).image}`)
+                                    : `${process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost'}/uploads/${(item.product as any).image}`)
                                 : "/placeholder.svg?height=96&width=96"
                             }
                             alt={(item.product as any)?.libelle || 'Produit'}

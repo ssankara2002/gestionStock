@@ -593,7 +593,7 @@ export default function ManagerDashboardPage() {
                         <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                           {product.image ? (
                             <Image
-                              src={product.image.startsWith("http") ? product.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${product.image}`}
+                              src={product.image.startsWith("http") ? product.image : `${process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost'}/uploads/${product.image}`}
                               alt={product.name}
                               fill
                               className="object-cover"

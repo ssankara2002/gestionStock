@@ -18,7 +18,7 @@ export function EquipeSection() {
   const [employes, setEmployes] = useState<Employe[]>([])
   const [loading, setLoading] = useState(true)
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3002'
+  const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost'
 
   useEffect(() => {
     const load = async () => {

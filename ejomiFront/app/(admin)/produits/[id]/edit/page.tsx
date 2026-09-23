@@ -61,7 +61,7 @@ export default function ModifierProduitPage({ params }: { params: Promise<{ id: 
           if (img.startsWith("http")) {
             setImagePreview(img)
           } else {
-            const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api").replace("/api", "")
+            const apiUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || (process.env.NEXT_PUBLIC_API_URL || "http://localhost/api").replace("/api", "")
             setImagePreview(`${apiUrl}/uploads/${img}`)
           }
         }

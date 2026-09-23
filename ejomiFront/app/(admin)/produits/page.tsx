@@ -166,7 +166,7 @@ export default function WarehouseProductsPage() {
                         </TableRow>
                       ) : (
                         filteredProducts.map((product) => {
-                          const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:3000"
+                          const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost"
                           const imageUrl = product.image
                             ? (product.image.startsWith("http") ? product.image : `${baseUrl}/uploads/${product.image}`)
                             : "/placeholder.svg?height=300&width=400"

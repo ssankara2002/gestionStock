@@ -57,7 +57,7 @@ export default function AboutPage() {
   }, [])
 
   const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:3002"
+    process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost"
 
   const heroImageUrl = config.heroImage
     ? `${baseUrl}/uploads/${config.heroImage}`

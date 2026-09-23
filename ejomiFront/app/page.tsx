@@ -84,7 +84,7 @@ export default function Home() {
     fetchProducts()
   }, [])
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:3002"
+  const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost"
 
   return (
     <div className="flex flex-col min-h-screen w-full">

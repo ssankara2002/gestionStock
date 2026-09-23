@@ -18,7 +18,7 @@ import type { Plat } from "@/types/plat"
 const imageUrl = (image?: string | null) => {
   if (!image) return "/placeholder.svg?height=80&width=80"
   if (image.startsWith("http") || image.startsWith("/")) return image
-  const base = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:3001"
+  const base = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost"
   return `${base}/uploads/${image}`
 }
 
