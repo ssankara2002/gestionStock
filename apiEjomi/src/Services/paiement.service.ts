@@ -254,6 +254,14 @@ const generateRecuPaiementPdf = async (paiementId: number): Promise<Buffer | nul
     return null;
   }
 
+  const entrepriseId = (paiement as any).commande?.entrepriseId;
+  const entreprise = entrepriseId
+    ? await prisma.entreprise.findUnique({ where: { id: entrepriseId } })
+    : null;
+  const nomEntreprise = entreprise?.nom || 'Mon Entreprise';
+  const adresseEntreprise = entreprise?.adresse || '';
+  const telEntreprise = entreprise?.tel || '';
+
   return new Promise((resolve, reject) => {
     try {
       // Créer un document PDF au format A5 (148 x 210 mm = 419.53 x 595.28 points)
@@ -275,11 +283,10 @@ const generateRecuPaiementPdf = async (paiementId: number): Promise<Buffer | nul
         .text('REÇU DE PAIEMENT', { align: 'center' })
         .moveDown(0.5);
 
-      doc
-        .fontSize(10)
-        .font('Helvetica')
-        .text('GoldStore - Équipement de Détection d\'Or', { align: 'center' })
-        .moveDown(1);
+      doc.fontSize(10).font('Helvetica').text(nomEntreprise, { align: 'center' });
+      if (adresseEntreprise) doc.fontSize(9).text(adresseEntreprise, { align: 'center' });
+      if (telEntreprise) doc.fontSize(9).text(`Tél: ${telEntreprise}`, { align: 'center' });
+      doc.moveDown(1);
 
       // Ligne de séparation
       doc

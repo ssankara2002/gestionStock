@@ -74,6 +74,15 @@ const generateBulletinPaiePdf = async (paiementId: number): Promise<Buffer | nul
     return null
   }
 
+  const entrepriseId = (paiement.employe as any)?.user?.entrepriseId
+  const entreprise = entrepriseId
+    ? await prisma.entreprise.findUnique({ where: { id: entrepriseId } })
+    : null
+
+  const nomEntreprise = entreprise?.nom || 'Mon Entreprise'
+  const adresseEntreprise = entreprise?.adresse || ''
+  const telEntreprise = entreprise?.tel || ''
+
   return new Promise((resolve, reject) => {
     try {
       // Créer un document PDF au format A5 (148 x 210 mm = 419.53 x 595.28 points)
@@ -98,7 +107,7 @@ const generateBulletinPaiePdf = async (paiementId: number): Promise<Buffer | nul
       doc
         .fontSize(9)
         .font('Helvetica')
-        .text('GoldStore - Équipement de Détection d\'Or', { align: 'center' })
+        .text(nomEntreprise, { align: 'center' })
         .moveDown(0.2)
         .text(`Période: ${new Date(paiement.datePaiement).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`, { align: 'center' })
         .moveDown(0.8)
@@ -125,11 +134,10 @@ const generateBulletinPaiePdf = async (paiementId: number): Promise<Buffer | nul
       doc
         .fontSize(8)
         .font('Helvetica-Bold')
-        .text('GoldStore', leftColumn, doc.y)
+        .text(nomEntreprise, leftColumn, doc.y)
         .font('Helvetica')
-        .text('123 Avenue de la République', leftColumn, doc.y + 12)
-        .text('Lomé, Togo', leftColumn, doc.y + 12)
-        .text('NINEA: 123456789', leftColumn, doc.y + 12)
+      if (adresseEntreprise) doc.text(adresseEntreprise, leftColumn, doc.y + 12)
+      if (telEntreprise) doc.text(`Tél: ${telEntreprise}`, leftColumn, doc.y + 12)
 
       // Colonne droite - Employé
       doc.y = startY
