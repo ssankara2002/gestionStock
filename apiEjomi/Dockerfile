@@ -3,6 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Outils nécessaires pour compiler les modules natifs si leur binaire précompilé est indisponible
+RUN apk add --no-cache python3 make g++
+
 # Copier les fichiers de dépendances
 COPY package*.json ./
 COPY prisma ./prisma/
