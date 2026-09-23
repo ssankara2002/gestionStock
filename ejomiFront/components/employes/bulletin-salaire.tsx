@@ -4,13 +4,21 @@ import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import type { SalairePaiement } from "@/types"
 
+interface Entreprise {
+  nom?: string
+  adresse?: string
+  tel?: string
+  email?: string
+}
+
 interface BulletinSalaireProps {
   paiement: SalairePaiement
   employeNom: string
   employePrenom: string
+  entreprise?: Entreprise
 }
 
-export function BulletinSalaire({ paiement, employeNom, employePrenom }: BulletinSalaireProps) {
+export function BulletinSalaire({ paiement, employeNom, employePrenom, entreprise }: BulletinSalaireProps) {
   return (
     <div className="w-[210mm] min-h-[297mm] bg-white p-12 mx-auto shadow-lg print:shadow-none">
       {/* En-tête */}
@@ -26,10 +34,10 @@ export function BulletinSalaire({ paiement, employeNom, employePrenom }: Bulleti
         <div>
           <h2 className="font-bold text-lg mb-3 border-b border-gray-300 pb-2">EMPLOYEUR</h2>
           <div className="space-y-1 text-sm">
-            <p className="font-semibold">Gold Store</p>
-            <p>123 Avenue de la République</p>
-            <p>Dakar, Sénégal</p>
-            <p>NINEA: 123456789</p>
+            <p className="font-semibold">{entreprise?.nom || "—"}</p>
+            {entreprise?.adresse && <p>{entreprise.adresse}</p>}
+            {entreprise?.tel && <p>Tél: {entreprise.tel}</p>}
+            {entreprise?.email && <p>{entreprise.email}</p>}
           </div>
         </div>
         <div>

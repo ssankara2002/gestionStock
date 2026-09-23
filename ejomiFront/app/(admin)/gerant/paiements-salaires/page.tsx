@@ -13,6 +13,7 @@ import { FormulaireSalaire } from "@/components/employes/formulaire-salaire"
 import { BulletinSalaire } from "@/components/employes/bulletin-salaire"
 import { salairePaiementService } from "@/services/salaire-paiement-service"
 import { employesService as employeService } from "@/services"
+import { useAuth } from "@/context/auth-provider"
 import type { SalairePaiement } from "@/types/salairePaiement"
 import type { Employe } from "@/types/employe"
 import { format } from "date-fns"
@@ -31,6 +32,7 @@ export default function PaiementsSalairesPage() {
   const [bulletinDialogOpen, setBulletinDialogOpen] = useState(false)
   const [selectedPaiement, setSelectedPaiement] = useState<SalairePaiement | null>(null)
   const { hasPermission } = usePermissions()
+  const { entreprise } = useAuth()
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -42,12 +44,10 @@ export default function PaiementsSalairesPage() {
     try {
       setLoading(true)
       const [paiementsRes, employesRes] = await Promise.all([
-        salairePaiementService.getAll(), // Ce service ne semble pas paginé
-        employeService.getAll(1, 1000), // L'API employés est paginée, on charge tout pour le filtre
+        salairePaiementService.getAll(),
+        employeService.getAll(1, 1000),
       ])
-      // Les services retournent la réponse Axios complète
       setPaiements(paiementsRes.data.data || [])
-      // La réponse des employés est paginée, on prend `data.data`
       setEmployes(employesRes.data.data || [])
     } catch (error) {
       console.error("Erreur lors du chargement:", error)
@@ -305,6 +305,7 @@ export default function PaiementsSalairesPage() {
               paiement={selectedPaiement}
               employeNom={selectedPaiement.employe?.user?.nom || ""}
               employePrenom={selectedPaiement.employe?.user?.prenom || ""}
+              entreprise={entreprise}
             />
           )}
         </DialogContent>

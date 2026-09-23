@@ -20,6 +20,7 @@ export interface User {
     id?: number
     name?: string
     description?: string | null
+    permissions?: { id: number; key: string; description?: string | null }[]
   }
   employe?: {
     id?: number
@@ -147,6 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: {
           ...(typeof loggedInUser.role === "object" ? loggedInUser.role : {}),
           name: tokenRole,
+          // Conserver les permissions reçues de l'API
+          permissions: (loggedInUser.role as any)?.permissions ?? [],
         },
       }
 
