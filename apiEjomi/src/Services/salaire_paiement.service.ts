@@ -41,7 +41,7 @@ const getAllSalairePaiements = async () => {
         },
       },
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { datePaiement: 'desc' }
   });
 };
 
@@ -120,7 +120,7 @@ const getSalairePaiementsByEmploye = async (employeId: number) => {
     include: {
       transactions: true,
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { datePaiement: 'desc' }
   });
 };
 
@@ -139,7 +139,7 @@ const getSalairePaiementsByDateRange = async (startDate: Date, endDate: Date) =>
         },
       },
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { datePaiement: 'desc' }
   });
 };
 

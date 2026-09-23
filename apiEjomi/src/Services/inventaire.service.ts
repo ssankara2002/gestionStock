@@ -145,7 +145,7 @@ const getHistoriqueInventaire = async (filters: {
       stockMagasin: true,
       stockBoutique: true,
     },
-    orderBy: { updatedAt: 'desc' },
+    orderBy: { dateInventaire: 'desc' },
   });
   return result;
 };
@@ -160,7 +160,7 @@ const getSessions = async (lieu?: LieuStock, entrepriseId?: number) => {
       employe: { include: { user: true } },
       lignes: { include: { produit: true } },
     },
-    orderBy: { updatedAt: 'desc' },
+    orderBy: { dateDebut: 'desc' },
   });
 };
 

@@ -64,7 +64,7 @@ const getAllTransactions = async (entrepriseId?: number) => {
         },
       },
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { date: 'desc' }
   });
 };
 
@@ -158,7 +158,7 @@ const getTransactionsByType = async (type: string) => {
       approvisionnement: true,
       salairePaiement: true,
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { date: 'desc' }
   });
 };
 
@@ -175,7 +175,7 @@ const getTransactionsByDateRange = async (startDate: Date, endDate: Date) => {
       approvisionnement: true,
       salairePaiement: true,
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { date: 'desc' }
   });
 };
 

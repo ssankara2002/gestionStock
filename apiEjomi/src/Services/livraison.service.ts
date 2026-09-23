@@ -46,7 +46,7 @@ const getAllLivraisons = async (entrepriseId?: number) => {
         },
       },
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { dateLivraison: 'desc' }
   });
 };
 
@@ -168,7 +168,7 @@ const getLivraisonsByCommande = async (commandeId: number) => {
         },
       },
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { dateLivraison: 'desc' }
   });
 };
 
@@ -182,7 +182,7 @@ const getLivraisonsByLivreur = async (livreurId: number) => {
         },
       },
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { dateLivraison: 'desc' }
   });
 };
 
@@ -201,7 +201,7 @@ const getLivraisonsByStatut = async (statut: string) => {
         },
       },
     },
-    orderBy: { updatedAt: 'desc' }
+    orderBy: { dateLivraison: 'desc' }
   });
 };
 

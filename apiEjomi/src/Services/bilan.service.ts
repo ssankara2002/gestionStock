@@ -98,7 +98,7 @@ const getBilanPeriode = async (
   // Dernières transactions de la période (25 max)
   const transactions = await prisma.transaction.findMany({
     where: { ...w, date: { gte: debut, lte: fin } },
-    orderBy: { updatedAt: 'desc' },
+    orderBy: { date: 'desc' },
     take: 25,
     select: { type: true, libelle: true, montant: true, date: true },
   });

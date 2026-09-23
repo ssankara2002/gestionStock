@@ -23,7 +23,7 @@ const getAll = async (entrepriseId?: number) => {
 const getByEmployeId = async (employeId: number) => {
   return await prisma.salairePaiement.findMany({
     where: { employeId },
-    orderBy: { updatedAt: "desc" },
+    orderBy: { datePaiement: "desc" },
   })
 }
 
