@@ -483,8 +483,16 @@ const generateRecuPdf = async (commandeId: number): Promise<Buffer | null> => {
   const commande = await getCommandeById(commandeId);
   if (!commande) return null;
 
+  const entreprise = (commande as any).entrepriseId
+    ? await prisma.entreprise.findUnique({ where: { id: (commande as any).entrepriseId } })
+    : null;
+
+  const nomEntreprise = entreprise?.nom || 'Mon Entreprise';
+  const telEntreprise = entreprise?.tel || '';
+  const adresseEntreprise = entreprise?.adresse || '';
+
   const nbLignes = commande.lignes.length;
-  const hauteurFixe = 280; // en-tête + client + vendeur + totaux + pied
+  const hauteurFixe = 280;
   const hauteurParLigne = 28;
   const hauteurTotale = hauteurFixe + nbLignes * hauteurParLigne;
 
@@ -501,6 +509,10 @@ const generateRecuPdf = async (commandeId: number): Promise<Buffer | null> => {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
+      doc.fontSize(13).font('Helvetica-Bold').text(nomEntreprise.toUpperCase(), { align: 'center' });
+      if (adresseEntreprise) doc.fontSize(7).font('Helvetica').text(adresseEntreprise, { align: 'center' });
+      if (telEntreprise) doc.fontSize(7).font('Helvetica').text(`Tél: ${telEntreprise}`, { align: 'center' });
+      doc.moveDown(0.3);
       doc.fontSize(14).font('Helvetica-Bold').text('REÇU DE COMMANDE', { align: 'center' });
       doc.moveDown(0.5);
       doc.fontSize(8).font('Helvetica').text('----------------------------------------', { align: 'center' });
@@ -567,7 +579,7 @@ const generateRecuPdf = async (commandeId: number): Promise<Buffer | null> => {
       doc.text('----------------------------------------', { align: 'center' });
       doc.moveDown(0.3);
       doc.fontSize(9).font('Helvetica-Bold').text('Merci pour votre confiance!', { align: 'center' });
-      doc.fontSize(7).font('Helvetica').text('GoldTech - Votre partenaire', { align: 'center' });
+      doc.fontSize(7).font('Helvetica').text(nomEntreprise, { align: 'center' });
 
       doc.end();
     } catch (error) {
@@ -580,6 +592,15 @@ const generateFacturePdf = async (commandeId: number): Promise<Buffer | null> =>
   const commande = await getCommandeById(commandeId);
   if (!commande) return null;
 
+  const entreprise = (commande as any).entrepriseId
+    ? await prisma.entreprise.findUnique({ where: { id: (commande as any).entrepriseId } })
+    : null;
+
+  const nomEntreprise = entreprise?.nom || 'Mon Entreprise';
+  const telEntreprise = entreprise?.tel || '';
+  const adresseEntreprise = entreprise?.adresse || '';
+  const emailEntreprise = entreprise?.email || '';
+
   const paiements = (commande as any).paiements || [];
   const totalPaye = paiements.reduce((s: number, p: any) => s + Number(p.montant || 0), 0);
   const montantTotal = Number(commande.montant);
@@ -588,7 +609,7 @@ const generateFacturePdf = async (commandeId: number): Promise<Buffer | null> =>
 
   const nbLignesFacture = commande.lignes.length;
   const nbPaiements = paiements.length;
-  const hauteurFixeFacture = 320; // en-tête + client + vendeur + totaux + pied
+  const hauteurFixeFacture = 340;
   const hauteurParLigneFacture = 28;
   const hauteurParPaiement = 14;
   const hauteurTotaleFacture = hauteurFixeFacture + nbLignesFacture * hauteurParLigneFacture + nbPaiements * hauteurParPaiement;
@@ -606,14 +627,15 @@ const generateFacturePdf = async (commandeId: number): Promise<Buffer | null> =>
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const W = 226.77 - 20; // largeur utile
+      const W = 226.77 - 20;
 
-      // En-tête
-      doc.fontSize(14).font('Helvetica-Bold').text('FACTURE', { align: 'center' });
+      // En-tête dynamique
+      doc.fontSize(13).font('Helvetica-Bold').text(nomEntreprise.toUpperCase(), { align: 'center' });
+      if (adresseEntreprise) doc.fontSize(7).font('Helvetica').text(adresseEntreprise, { align: 'center' });
+      if (telEntreprise) doc.fontSize(7).font('Helvetica').text(`Tél: ${telEntreprise}`, { align: 'center' });
+      if (emailEntreprise) doc.fontSize(7).font('Helvetica').text(emailEntreprise, { align: 'center' });
       doc.moveDown(0.3);
-      doc.fontSize(8).font('Helvetica').text('GoldTech - Bijouterie & Technologie', { align: 'center' });
-      doc.text('123 Avenue du Commerce, Dakar', { align: 'center' });
-      doc.text('Tel: +221 33 123 45 67', { align: 'center' });
+      doc.fontSize(14).font('Helvetica-Bold').text('FACTURE', { align: 'center' });
       doc.moveDown(0.4);
       doc.fontSize(8).text('----------------------------------------', { align: 'center' });
       doc.moveDown(0.3);
@@ -694,7 +716,7 @@ const generateFacturePdf = async (commandeId: number): Promise<Buffer | null> =>
       doc.fontSize(8).text('----------------------------------------', { align: 'center' });
       doc.moveDown(0.3);
       doc.fontSize(9).font('Helvetica-Bold').text('Merci pour votre confiance!', { align: 'center' });
-      doc.fontSize(7).font('Helvetica').text('GoldTech - Votre partenaire', { align: 'center' });
+      doc.fontSize(7).font('Helvetica').text(nomEntreprise, { align: 'center' });
 
       doc.end();
     } catch (error) {
