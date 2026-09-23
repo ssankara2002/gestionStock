@@ -107,15 +107,9 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
 
     const entrepriseId = (req as any).user?.entrepriseId;
 
-    // Récupérer le rôle CLIENT de cette entreprise
     const clientRole = await prisma.role.findFirst({
       where: { name: 'CLIENT', ...(entrepriseId ? { entrepriseId } : {}) }
     });
-
-    if (!clientRole) {
-      res.status(500).json({ success: false, message: 'Le rôle CLIENT n\'existe pas' });
-      return;
-    }
 
     const userData = {
       nom,
@@ -124,7 +118,7 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
       tel,
       adresse,
       password: password || undefined,
-      roleId: clientRole.id,
+      ...(clientRole ? { roleId: clientRole.id } : {}),
       entrepriseId: entrepriseId || undefined,
     };
 
