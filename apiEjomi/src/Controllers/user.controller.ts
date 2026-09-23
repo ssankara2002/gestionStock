@@ -113,9 +113,9 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
 
     const userData = {
       nom,
-      prenom,
-      email,
-      tel,
+      prenom: prenom || undefined,
+      email: email || null,
+      tel: tel || null,
       adresse,
       password: password || undefined,
       ...(clientRole ? { roleId: clientRole.id } : {}),
@@ -147,8 +147,8 @@ export const updateUserController = async (req: Request, res: Response): Promise
     const userData: any = {};
     if (nom) userData.nom = nom;
     if (prenom) userData.prenom = prenom;
-    if (email !== undefined) userData.email = email;
-    if (tel) userData.tel = tel;
+    if (email !== undefined) userData.email = email || null;
+    if (tel !== undefined) userData.tel = tel || null;
     if (adresse) userData.adresse = adresse;
     if (password) userData.password = password;
 
