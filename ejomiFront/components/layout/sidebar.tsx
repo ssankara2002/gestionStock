@@ -54,7 +54,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { user, entreprise, logout, loading } = useAuth()
   const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions()
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3002'
+  const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:80'
 
   const menuItems: MenuItem[] = [
     {

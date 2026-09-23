@@ -82,7 +82,7 @@ const getAll = async (queryParams: any, entrepriseId?: number) => {
       where: whereClause,
       skip,
       take,
-      orderBy: { dateApprovisionnement: 'desc' },
+      orderBy: { updatedAt: 'desc' },
       include: {
         fournisseur: true,
         employe: { include: { user: true } },

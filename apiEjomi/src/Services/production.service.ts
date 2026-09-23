@@ -54,7 +54,7 @@ const getAllProductions = async (entrepriseId?: number) => {
         },
       },
     },
-    orderBy: { dateProduction: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -236,7 +236,7 @@ const getProductionsByProduit = async (produitId: number) => {
         },
       },
     },
-    orderBy: { dateProduction: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -251,7 +251,7 @@ const getProductionsByEmploye = async (employeId: number) => {
         },
       },
     },
-    orderBy: { dateProduction: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 

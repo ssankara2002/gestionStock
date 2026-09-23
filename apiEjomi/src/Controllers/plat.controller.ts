@@ -31,18 +31,20 @@ export const getPlatById = async (req: AuthenticatedRequest, res: Response): Pro
 
 export const createPlat = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { libelle, description, prixVenteUnitaire } = req.body;
+    const { libelle, description, prixVenteUnitaire, categorie, entrepriseId: bodyEntrepriseId } = req.body;
     const prix = Number(prixVenteUnitaire);
     if (!libelle || !Number.isFinite(prix) || prix < 0) {
       res.status(400).json({ success: false, message: 'Libellé et prix de vente valides requis.' });
       return;
     }
+    const entrepriseId = req.user?.entrepriseId ?? (bodyEntrepriseId ? parseInt(bodyEntrepriseId) : undefined);
     const plat = await platService.createPlat({
       libelle: String(libelle).trim(),
       description: description || null,
       image: req.file?.filename || null,
       prixVenteUnitaire: prix,
-      entrepriseId: req.user?.entrepriseId,
+      categorie: categorie || 'REPAS',
+      entrepriseId,
     });
     res.status(201).json({ success: true, data: plat });
   } catch (error: any) {
@@ -64,6 +66,7 @@ export const updatePlat = async (req: AuthenticatedRequest, res: Response): Prom
       }
       data.prixVenteUnitaire = prix;
     }
+    if (req.body.categorie !== undefined) data.categorie = req.body.categorie;
     if (req.file) data.image = req.file.filename;
     const plat = await platService.updatePlat(id, req.user?.entrepriseId, data);
     if (!plat) {

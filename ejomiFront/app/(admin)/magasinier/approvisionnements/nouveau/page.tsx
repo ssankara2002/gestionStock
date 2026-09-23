@@ -211,10 +211,10 @@ export default function NouvelApprovisionnementPage() {
 
   // Ajouter un nouveau fournisseur
   const ajouterNouveauFournisseur = async () => {
-    if (!newFournisseur.nom || !newFournisseur.prenom || !newFournisseur.tel || !newFournisseur.adresse) {
+    if (!newFournisseur.nom || !newFournisseur.adresse) {
       toast({
         title: "Erreur",
-        description: "Le nom, prénom, téléphone et adresse du fournisseur sont requis.",
+        description: "Le nom et l'adresse du fournisseur sont requis.",
         variant: "destructive",
       })
       return
@@ -232,7 +232,7 @@ export default function NouvelApprovisionnementPage() {
 
       toast({
         title: "Fournisseur ajouté",
-        description: `${createdFournisseur.prenom} ${createdFournisseur.nom} a été ajouté avec succès.`,
+        description: `${[createdFournisseur.prenom, createdFournisseur.nom].filter(Boolean).join(" ") || createdFournisseur.nom} a été ajouté avec succès.`,
       })
     } catch (error: any) {
       toast({
@@ -354,8 +354,8 @@ export default function NouvelApprovisionnementPage() {
                             <SearchableSelect
                               options={fournisseurs.filter(f => f && f.id).map((f) => ({
                                 value: f.id.toString(),
-                                label: `${f.prenom} ${f.nom}`,
-                                description: `${f.tel}${f.email ? ' - ' + f.email : ''}`,
+                                label: [f.prenom, f.nom].filter(Boolean).join(" ") || f.nom,
+                                description: [f.tel, f.email].filter(Boolean).join(" - "),
                               }))}
                               value={field.value ? field.value.toString() : undefined}
                               onValueChange={(value) => field.onChange(parseInt(value))}
@@ -382,21 +382,28 @@ export default function NouvelApprovisionnementPage() {
                             </DialogHeader>
                             <div className="flex flex-col gap-4 py-4">
                               <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="prenom">Prénom*</Label>
-                                <Input
-                                  id="prenom"
-                                  value={newFournisseur.prenom}
-                                  onChange={(e) => setNewFournisseur({ ...newFournisseur, prenom: e.target.value })}
-                                  required
-                                />
-                              </div>
-                              <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="nom">Nom*</Label>
+                                <Label htmlFor="nom">Nom <span className="text-red-500">*</span></Label>
                                 <Input
                                   id="nom"
                                   value={newFournisseur.nom}
                                   onChange={(e) => setNewFournisseur({ ...newFournisseur, nom: e.target.value })}
                                   required
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="prenom">Prénom</Label>
+                                <Input
+                                  id="prenom"
+                                  value={newFournisseur.prenom}
+                                  onChange={(e) => setNewFournisseur({ ...newFournisseur, prenom: e.target.value })}
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="tel">Téléphone</Label>
+                                <Input
+                                  id="tel"
+                                  value={newFournisseur.tel}
+                                  onChange={(e) => setNewFournisseur({ ...newFournisseur, tel: e.target.value })}
                                 />
                               </div>
                               <div className="flex flex-col gap-1.5">
@@ -409,16 +416,7 @@ export default function NouvelApprovisionnementPage() {
                                 />
                               </div>
                               <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="tel">Téléphone*</Label>
-                                <Input
-                                  id="tel"
-                                  value={newFournisseur.tel}
-                                  onChange={(e) => setNewFournisseur({ ...newFournisseur, tel: e.target.value })}
-                                  required
-                                />
-                              </div>
-                              <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="adresse">Adresse*</Label>
+                                <Label htmlFor="adresse">Adresse <span className="text-red-500">*</span></Label>
                                 <Input
                                   id="adresse"
                                   value={newFournisseur.adresse}
@@ -715,7 +713,7 @@ export default function NouvelApprovisionnementPage() {
                             <p className="font-medium">Fournisseur</p>
                             <p className="text-muted-foreground">
                               {selectedFournisseur
-                                ? `${selectedFournisseur.prenom} ${selectedFournisseur.nom}`.trim()
+                                ? [selectedFournisseur.prenom, selectedFournisseur.nom].filter(Boolean).join(" ") || selectedFournisseur.nom
                                 : "Fournisseur non sélectionné"}
                             </p>
                           </div>

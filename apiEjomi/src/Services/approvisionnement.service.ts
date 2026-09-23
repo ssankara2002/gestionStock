@@ -40,7 +40,7 @@ const getAllApprovisionnements = async (queryParams: any, entrepriseId?: number)
         lignes: { include: { produit: true, stockMagasin: true } },
         transactions: true,
       },
-      orderBy: { dateApprovisionnement: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     }),
     prisma.approvisionnement.count({ where: whereClause }),
   ]);
@@ -279,7 +279,7 @@ const getApprovisionnementsByFournisseur = async (fournisseurId: number, page: n
         employe: { include: { user: true } },
         lignes: { include: { produit: true, stockMagasin: true } },
       },
-      orderBy: { dateApprovisionnement: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     }),
     prisma.approvisionnement.count({ where }),
   ]);
@@ -299,7 +299,7 @@ const getApprovisionnementsByEmploye = async (employeId: number, page: number = 
         employe: { include: { user: true } },
         lignes: { include: { produit: true, stockMagasin: true } },
       },
-      orderBy: { dateApprovisionnement: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     }),
     prisma.approvisionnement.count({ where }),
   ]);

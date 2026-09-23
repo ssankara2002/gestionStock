@@ -58,7 +58,7 @@ const getFournisseurById = async (id: number) => {
             },
           },
         },
-        orderBy: { dateApprovisionnement: 'desc' }
+        orderBy: { updatedAt: 'desc' }
       },
     },
   });

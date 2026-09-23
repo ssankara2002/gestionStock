@@ -25,7 +25,7 @@ export function Header({ showSidebar = false }: { showSidebar?: boolean }) {
   const isMobile = useIsMobile()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3002'
+  const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:80'
 
   useEffect(() => {
     setMounted(true)

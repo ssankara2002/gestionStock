@@ -289,9 +289,15 @@ export default function NouvelleCommandePage() {
   // Mettre à jour la réduction d'une ligne
   const updateReduction = (ligneId: string, reduction: number) => {
     if (reduction < 0) return
-
     setLignesCommande((prevLignes) =>
       prevLignes.map((ligne) => (ligne.id === ligneId ? { ...ligne, reduction } : ligne)),
+    )
+  }
+
+  const updatePrixUnitaire = (ligneId: string, prixUnitaire: number) => {
+    if (prixUnitaire < 0) return
+    setLignesCommande((prevLignes) =>
+      prevLignes.map((ligne) => (ligne.id === ligneId ? { ...ligne, prixUnitaire } : ligne)),
     )
   }
 
@@ -386,11 +392,10 @@ export default function NouvelleCommandePage() {
 
   // Ajouter un nouveau client
   const ajouterNouveauClient = async () => {
-    // Validation basique
-    if (!newClient.nom || !newClient.prenom || !newClient.email || !newClient.tel || !newClient.adresse) {
+    if (!newClient.nom || !newClient.adresse) {
       toast({
         title: "Erreur",
-        description: "Tous les champs pour le client sont requis.",
+        description: "Le nom et l'adresse du client sont requis.",
         variant: "destructive",
       })
       return
@@ -410,7 +415,7 @@ export default function NouvelleCommandePage() {
 
       toast({
         title: "Client ajouté",
-        description: `${createdClient.prenom} ${createdClient.nom} a été ajouté avec succès.`,
+        description: `${[createdClient.prenom, createdClient.nom].filter(Boolean).join(" ") || createdClient.nom} a été ajouté avec succès.`,
       })
     } catch (error: any) {
       toast({
@@ -475,13 +480,13 @@ export default function NouvelleCommandePage() {
                                         value: field.value.toString(),
                                         label: (() => {
                                           const c = clients.find((c) => c.id === field.value)
-                                          return c ? `${c.prenom} ${c.nom}` : ""
+                                          return c ? [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom : ""
                                         })(),
                                       }
                                     : null
                                 }
                                 onChange={(opt: any) => field.onChange(opt ? Number.parseInt(opt.value) : undefined)}
-                                options={clients.map((c) => ({ value: c.id.toString(), label: `${c.prenom} ${c.nom}` }))}
+                                options={clients.map((c) => ({ value: c.id.toString(), label: [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom }))}
                               />
                             )}
                           />
@@ -531,20 +536,8 @@ export default function NouvelleCommandePage() {
                               </DialogHeader>
                               <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <Label htmlFor="prenom" className="text-right">
-                                    Prénom*
-                                  </Label>
-                                  <Input
-                                    id="prenom"
-                                    value={newClient.prenom}
-                                    onChange={(e) => setNewClient({ ...newClient, prenom: e.target.value })}
-                                    className="col-span-3"
-                                    required
-                                  />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
                                   <Label htmlFor="nom" className="text-right">
-                                    Nom*
+                                    Nom <span className="text-red-500">*</span>
                                   </Label>
                                   <Input
                                     id="nom"
@@ -555,16 +548,14 @@ export default function NouvelleCommandePage() {
                                   />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <Label htmlFor="email" className="text-right">
-                                    Email*
+                                  <Label htmlFor="prenom" className="text-right">
+                                    Prénom
                                   </Label>
                                   <Input
-                                    id="email"
-                                    type="email"
-                                    value={newClient.email}
-                                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                                    id="prenom"
+                                    value={newClient.prenom}
+                                    onChange={(e) => setNewClient({ ...newClient, prenom: e.target.value })}
                                     className="col-span-3"
-                                    required
                                   />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
@@ -579,14 +570,27 @@ export default function NouvelleCommandePage() {
                                   />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
+                                  <Label htmlFor="email" className="text-right">
+                                    Email
+                                  </Label>
+                                  <Input
+                                    id="email"
+                                    type="email"
+                                    value={newClient.email}
+                                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                                    className="col-span-3"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
                                   <Label htmlFor="adresse" className="text-right">
-                                    Adresse
+                                    Adresse <span className="text-red-500">*</span>
                                   </Label>
                                   <Input
                                     id="adresse"
                                     value={newClient.adresse}
                                     onChange={(e) => setNewClient({ ...newClient, adresse: e.target.value })}
                                     className="col-span-3"
+                                    required
                                   />
                                 </div>
                               </div>
@@ -738,7 +742,22 @@ export default function NouvelleCommandePage() {
                                   <TableCell className="font-medium">
                                     {itemLabel}
                                   </TableCell>
-                                  <TableCell className="text-right">{ligne.prixUnitaire.toFixed(2)} FCFA</TableCell>
+                                  <TableCell className="text-right">
+                                    {plat ? (
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          className="w-24 h-7 text-right"
+                                          value={ligne.prixUnitaire}
+                                          onChange={(e) => updatePrixUnitaire(ligne.id, Number.parseFloat(e.target.value) || 0)}
+                                        />
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">FCFA</span>
+                                      </div>
+                                    ) : (
+                                      <span>{ligne.prixUnitaire.toFixed(2)} FCFA</span>
+                                    )}
+                                  </TableCell>
                                   <TableCell>
                                     <div className="flex items-center justify-center">
                                       <Button
@@ -948,7 +967,7 @@ export default function NouvelleCommandePage() {
                               {clientIdValue
                                 ? (() => {
                                     const client = clients.find((c) => c.id === clientIdValue)
-                                    return client ? `${client.prenom} ${client.nom}`.trim() : "Client non sélectionné"
+                                    return client ? [client.prenom, client.nom].filter(Boolean).join(" ") || client.nom : "Client non sélectionné"
                                   })()
                                 : "Client non sélectionné"}
                             </p>

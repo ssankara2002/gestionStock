@@ -20,8 +20,9 @@ const nom = z
 
 const prenom = z
   .string()
-  .min(3, "Le prénom est obligatoire")
   .max(100, "Le prénom ne doit pas dépasser 100 caractères")
+  .optional()
+  .or(z.literal(""))
 
 const adresse = z
   .string()
@@ -29,21 +30,11 @@ const adresse = z
   .max(255, "L'adresse ne doit pas dépasser 255 caractères")
 
 // ─── Client ────────────────────────────────────────────────────────────────────
-export const clientSchema = z
-  .object({ nom, prenom, email, tel, adresse })
-  .refine((d) => (d.email && d.email !== "") || (d.tel && d.tel !== ""), {
-    message: "Un email ou un numéro de téléphone est requis",
-    path: ["tel"],
-  })
+export const clientSchema = z.object({ nom, prenom, email, tel, adresse })
 export type ClientFormValues = z.infer<typeof clientSchema>
 
 // ─── Fournisseur ───────────────────────────────────────────────────────────────
-export const fournisseurSchema = z
-  .object({ nom, prenom, email, tel, adresse })
-  .refine((d) => (d.email && d.email !== "") || (d.tel && d.tel !== ""), {
-    message: "Un email ou un numéro de téléphone est requis",
-    path: ["tel"],
-  })
+export const fournisseurSchema = z.object({ nom, prenom, email, tel, adresse })
 export type FournisseurFormValues = z.infer<typeof fournisseurSchema>
 
 // ─── Employé ───────────────────────────────────────────────────────────────────

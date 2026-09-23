@@ -40,7 +40,8 @@ export default function RolesPage() {
   const loadRoles = async () => {
     try {
       setLoading(true)
-      const response = await rolesService.getAll(entreprise?.id)
+      const entrepriseId = entreprise?.id ?? (typeof window !== "undefined" ? Number(localStorage.getItem("entrepriseId")) || undefined : undefined)
+      const response = await rolesService.getAll(entrepriseId)
       setRoles(response.data.data || [])
     } catch (error: any) {
       toast({

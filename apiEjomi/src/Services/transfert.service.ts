@@ -159,7 +159,7 @@ const getAllTransferts = async (page = 1, limit = 20, entrepriseId?: number) => 
         stockMagasin: { select: { quantite: true } },
         stockBoutique: { select: { quantite: true } },
       },
-      orderBy: { dateTransfert: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     }),
     prisma.transfertStock.count({ where }),
   ]);

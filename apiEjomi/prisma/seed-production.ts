@@ -13,14 +13,14 @@ const permissionGroups: Record<string, string[]> = {
   plat: ['read', 'create', 'update', 'delete'],
   commande: ['read', 'create', 'update', 'delete', 'export', 'statistics', 'validate'],
   paiement: ['read', 'create', 'update', 'delete', 'export', 'statistics', 'validate'],
-//   livraison: ['read', 'create', 'update', 'delete', 'export', 'assign'],
+  livraison: ['read', 'create', 'update', 'delete', 'assign'],
+  transfert: ['read', 'create', 'update', 'delete'],
   approvisionnement: ['read', 'create', 'update', 'delete', 'export', 'validate'],
-//   approvisionnement_matiere_premiere: ['read', 'create', 'update', 'delete'],
-//   production: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
-//   matiere_premiere: ['read', 'create', 'update', 'delete', 'export'],
+  approvisionnement_matiere_premiere: ['read', 'create', 'update', 'delete'],
+  production: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
+  matiere_premiere: ['read', 'create', 'update', 'delete', 'export'],
   absence: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
-    client: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
-
+  client: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
   conge: ['read', 'create', 'update', 'delete', 'approve', 'reject', 'export'],
   salaire_paiement: ['read', 'create', 'update', 'delete', 'export'],
   transaction: ['read', 'create', 'update', 'delete', 'export', 'statistics'],
@@ -104,41 +104,47 @@ async function main() {
     permissionsByScope.set(String(entrepriseId), permissions);
   }
 
-  // Les clients sont des utilisateurs portant le rôle CLIENT.
-  for (const entreprise of entreprises) {
-    const scopedPermissions = permissionsByScope.get(String(entreprise.id)) || [];
-    const clientPermissions = scopedPermissions.filter(permission => [
-      'client.read', 'client.update', 'user.read',
-      'produit.read', 'commande.read', 'commande.create',
-      'paiement.read', 'paiement.create',
-    ].includes(permission.key));
-    const clientRole = await ensureRole('CLIENT', entreprise.id);
-    await prisma.role.update({
-      where: { id: clientRole.id },
-      data: { permissions: { set: clientPermissions.map(permission => ({ id: permission.id })) } },
-    });
-  }
-
-  // Les caissiers peuvent consulter les ventes, les plats, les fournisseurs et les lots.
-  for (const entreprise of entreprises) {
-    const scopedPermissions = permissionsByScope.get(String(entreprise.id)) || [];
-    const cashierPermissions = scopedPermissions.filter(permission => [
+  // Seuls deux rôles par entreprise : ADMIN (tous les droits) et CAISSIER
+  const rolePermissions: Record<string, string[]> = {
+    ADMIN: permissionKeys,
+    CAISSIER: [
       'commande.read', 'commande.create', 'commande.update',
-      'produit.read', 'plat.read', 'fournisseur.read', 'approvisionnement.read',
-      'user.read', 'client.read',
-    ].includes(permission.key));
+      'paiement.read', 'paiement.create', 'paiement.update',
+      'produit.read',
+      'plat.read',
+      'client.read', 'client.create',
+      'user.read',
+    ],
+  };
 
-    for (const roleName of ['CAISSIER', 'CAISSIERE']) {
+  // Noms des rôles à conserver — supprimer tout autre rôle d'entreprise
+  const rolesAConserver = Object.keys(rolePermissions);
+
+  for (const entreprise of entreprises) {
+    const scopedPermissions = permissionsByScope.get(String(entreprise.id)) || [];
+
+    // Supprimer les rôles qui ne font plus partie de la liste
+    const rolesExistants = await prisma.role.findMany({ where: { entrepriseId: entreprise.id } });
+    for (const role of rolesExistants) {
+      if (!rolesAConserver.includes(role.name)) {
+        // Détacher les utilisateurs avant suppression
+        await prisma.user.updateMany({ where: { roleId: role.id }, data: { roleId: null } });
+        await prisma.userEntreprise.updateMany({ where: { roleId: role.id }, data: { roleId: null } });
+        await prisma.role.delete({ where: { id: role.id } });
+        console.log(`🗑️  Rôle supprimé : ${role.name} (entreprise ${entreprise.id})`);
+      }
+    }
+
+    // Créer/mettre à jour ADMIN et CAISSIER
+    for (const [roleName, keys] of Object.entries(rolePermissions)) {
       const role = await ensureRole(roleName, entreprise.id);
+      const perms = scopedPermissions.filter(p => keys.includes(p.key));
       await prisma.role.update({
         where: { id: role.id },
-        data: {
-          permissions: {
-            set: cashierPermissions.map(permission => ({ id: permission.id })),
-          },
-        },
+        data: { permissions: { set: perms.map(p => ({ id: p.id })) } },
       });
     }
+    console.log(`✅ Rôles synchronisés pour l'entreprise ${entreprise.id} : ADMIN, CAISSIER`);
   }
 
   const adminRoles = [];

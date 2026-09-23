@@ -85,14 +85,14 @@ export default function NouveauFournisseurPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="prenom">Prénom <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="prenom">Prénom <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
                     <Input id="prenom" placeholder="Prénom du fournisseur" {...register("prenom")} />
                     {errors.prenom && <p className="text-sm text-red-500 mt-1">{errors.prenom.message}</p>}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="email">
-                      Email <span className="text-muted-foreground text-xs">(requis si pas de téléphone)</span>
+                      Email <span className="text-muted-foreground text-xs">(optionnel)</span>
                     </Label>
                     <Input id="email" type="email" placeholder="email@example.com" {...register("email")} />
                     {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
@@ -100,7 +100,7 @@ export default function NouveauFournisseurPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="tel">
-                      Téléphone <span className="text-muted-foreground text-xs">(requis si pas d'email)</span>
+                      Téléphone <span className="text-muted-foreground text-xs">(optionnel)</span>
                     </Label>
                     <Input id="tel" placeholder="Ex: +226 70 00 00 00" {...register("tel")} />
                     {errors.tel && <p className="text-sm text-red-500 mt-1">{errors.tel.message}</p>}

@@ -10,13 +10,12 @@ export const getOrCreateClientAnonyme = async (_req: AuthenticatedRequest, res: 
   try {
     const entrepriseId = (_req as any).user?.entrepriseId;
     const clientRole = await prisma.role.findFirst({ where: { name: 'CLIENT', ...(entrepriseId ? { entrepriseId } : {}) } });
-    if (!clientRole) {
-      res.status(500).json({ success: false, message: "Rôle CLIENT introuvable." });
-      return;
-    }
 
     let client = await prisma.user.findFirst({
-      where: { tel: '0000000000', roleId: clientRole.id, ...(entrepriseId ? { entrepriseId } : {}) },
+      where: {
+        nom: 'Anonyme',
+        ...(entrepriseId ? { entrepriseId } : {}),
+      },
     });
 
     if (!client) {
@@ -26,7 +25,7 @@ export const getOrCreateClientAnonyme = async (_req: AuthenticatedRequest, res: 
           prenom: 'Client',
           tel: '0000000000',
           adresse: '-',
-          roleId: clientRole.id,
+          ...(clientRole ? { roleId: clientRole.id } : {}),
           ...(entrepriseId ? { entrepriseId } : {}),
         },
       });
@@ -101,12 +100,8 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
   try {
     const { nom, prenom, email, tel, adresse, password } = req.body;
 
-    if (!nom || !prenom || !adresse) {
-      res.status(400).json({ success: false, message: 'Les champs nom, prénom et adresse sont obligatoires' });
-      return;
-    }
-    if (!email && !tel) {
-      res.status(400).json({ success: false, message: 'Un email ou un numéro de téléphone est requis' });
+    if (!nom || !adresse) {
+      res.status(400).json({ success: false, message: 'Les champs nom et adresse sont obligatoires' });
       return;
     }
 

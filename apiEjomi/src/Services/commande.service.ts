@@ -193,7 +193,7 @@ const getAllCommandes = async (page: number = 1, limit: number = 10, entrepriseI
         lignes: { select: { quantiteCommande: true } },
         paiements: true,
       },
-      orderBy: { dateCommande: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     }),
     prisma.commande.count({ where }),
   ]);
@@ -371,7 +371,7 @@ const getCommandesByVendeur = async (vendeurId: number) => {
       lignes: { include: { produit: true, plat: true } },
       paiements: true,
     },
-    orderBy: { dateCommande: 'desc' },
+    orderBy: { updatedAt: 'desc' },
   });
 };
 
@@ -384,7 +384,7 @@ const getCommandesByClient = async (clientId: number) => {
       lignes: { include: { produit: true, plat: true } },
       paiements: true,
     },
-    orderBy: { dateCommande: 'desc' },
+    orderBy: { updatedAt: 'desc' },
   });
 };
 
@@ -444,18 +444,20 @@ const getCommandeStatistics = async (entrepriseId?: number) => {
     prisma.commande.count({ where: { ...w, statut: 'LIVREE' } }),
   ]);
 
-  const produitsIds = topProduits.map((p) => p.produitId);
-  const produits = await prisma.produit.findMany({
+  const produitsIds = topProduits.map((p) => p.produitId).filter((id): id is number => id !== null);
+  const produits = produitsIds.length > 0 ? await prisma.produit.findMany({
     where: { id: { in: produitsIds }, ...(entrepriseId ? { entrepriseId } : {}) },
     select: { id: true, libelle: true, image: true, prixDeVenteUnitaire: true },
-  });
+  }) : [];
 
-  const topProduitsWithDetails = topProduits.map((tp) => ({
-    produitId: tp.produitId,
-    produit: produits.find((p) => p.id === tp.produitId) || null,
-    quantiteCommandee: tp._sum?.quantiteCommande || 0,
-    montantTotal: tp._sum?.montant || 0,
-  }));
+  const topProduitsWithDetails = topProduits
+    .filter((tp) => tp.produitId !== null)
+    .map((tp) => ({
+      produitId: tp.produitId,
+      produit: produits.find((p) => p.id === tp.produitId) || null,
+      quantiteCommandee: tp._sum?.quantiteCommande || 0,
+      montantTotal: tp._sum?.montant || 0,
+    }));
 
   const percentChange =
     commandesMoisPrecedent > 0

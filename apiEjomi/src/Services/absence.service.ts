@@ -147,7 +147,7 @@ const getAbsencesByEmploye = async (employeId: number) => {
         },
       },
     },
-    orderBy: { date: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -163,7 +163,7 @@ const getAbsencesByDateRange = async (startDate: Date, endDate: Date) => {
         },
       },
     },
-    orderBy: { date: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 

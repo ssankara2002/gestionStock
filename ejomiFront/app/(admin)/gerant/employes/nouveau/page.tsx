@@ -53,7 +53,8 @@ export default function NouvelEmployePage() {
     const fetchRoles = async () => {
       try {
         setLoadingRoles(true)
-        const response = await rolesService.getAll(entreprise?.id)
+        const entrepriseId = entreprise?.id ?? (typeof window !== "undefined" ? Number(localStorage.getItem("entrepriseId")) || undefined : undefined)
+        const response = await rolesService.getAll(entrepriseId)
         setRoles(response.data.data || [])
       } catch (err) {
         toast({ title: "Erreur", description: "Erreur lors du chargement des rôles", variant: "destructive" })

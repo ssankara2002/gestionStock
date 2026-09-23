@@ -36,9 +36,10 @@ const createPlat = async (data: {
   description?: string | null;
   image?: string | null;
   prixVenteUnitaire: number;
+  categorie?: string;
   entrepriseId?: number;
 }) => {
-  return prisma.plat.create({ data });
+  return prisma.plat.create({ data: { ...data, categorie: (data.categorie as any) || 'REPAS' } });
 };
 
 const updatePlat = async (id: number, entrepriseId: number | undefined, data: Record<string, unknown>) => {

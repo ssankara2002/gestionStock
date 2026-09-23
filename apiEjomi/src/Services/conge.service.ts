@@ -162,7 +162,7 @@ const getCongesByDateRange = async (startDate: Date, endDate: Date) => {
         },
       },
     },
-    orderBy: { dateDebut: 'desc' },
+    orderBy: { updatedAt: 'desc' },
   });
 };
 

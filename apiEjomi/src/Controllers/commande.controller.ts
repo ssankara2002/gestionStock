@@ -76,7 +76,7 @@ export const getAllCommandes = async (req: AuthenticatedRequest, res: Response):
           client: true,
           paiements: true,
         },
-        orderBy: { dateCommande: 'desc' },
+        orderBy: { updatedAt: 'desc' },
       }),
       prisma.commande.count({ where }),
     ]);

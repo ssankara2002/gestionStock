@@ -36,7 +36,7 @@ const getAllPaiements = async (entrepriseId?: number) => {
         },
       },
     },
-    orderBy: { datePaiement: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -164,7 +164,7 @@ const getPaiementsByCommande = async (commandeId: number) => {
     include: {
       commande: true,
     },
-    orderBy: { datePaiement: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -178,7 +178,7 @@ const getPaiementsByStatut = async (statut: string) => {
         },
       },
     },
-    orderBy: { datePaiement: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 };
 
@@ -218,7 +218,7 @@ const getOutstandingByClient = async (clientId: number) => {
   const commandes = await prisma.commande.findMany({
     where: { clientId },
     include: { paiements: true },
-    orderBy: { dateCommande: 'desc' }
+    orderBy: { updatedAt: 'desc' }
   });
 
   const result = commandes.map((c: any) => {

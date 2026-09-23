@@ -10,8 +10,8 @@ interface HomeHeaderProps {
 }
 
 export function HomeHeader({ logo, nom }: HomeHeaderProps = {}) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:3002"
-  const logoSrc = logo ? `${baseUrl}/public/${logo}` : "/logo.jpeg"
+  const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:80"
+  const logoSrc = logo ? `${baseUrl}/uploads/${logo}` : "/logo.jpeg"
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

@@ -46,8 +46,8 @@ export const createFournisseur = async (req: AuthenticatedRequest, res: Response
   try {
     const { nom, email, prenom, adresse, tel } = req.body;
 
-    if (!nom || !prenom || !adresse || !tel) {
-      res.status(400).json({ success: false, message: 'Les champs nom, prenom, adresse et tel sont obligatoires' });
+    if (!nom || !adresse) {
+      res.status(400).json({ success: false, message: 'Les champs nom et adresse sont obligatoires' });
       return;
     }
 

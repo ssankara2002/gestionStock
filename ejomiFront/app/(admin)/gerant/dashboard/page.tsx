@@ -478,7 +478,7 @@ export default function ManagerDashboardPage() {
               </CardContent>
               <CardFooter>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/gerant/commandes">Voir toutes les ventes</Link>
+                  <Link href="/vendeur/commandes">Voir toutes les ventes</Link>
                 </Button>
               </CardFooter>
             </Card>

@@ -386,9 +386,9 @@ model Livraison {
 model Fournisseur {
   id                 Int                 @id @default(autoincrement())
   nom                String
-  prenom             String
+  prenom             String?
   email              String?
-  tel                String
+  tel                String?
   adresse            String
   entrepriseId       Int?
   createdAt          DateTime            @default(now())

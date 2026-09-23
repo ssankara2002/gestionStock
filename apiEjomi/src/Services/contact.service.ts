@@ -41,7 +41,7 @@ const getAllContacts = async (page: number = 1, limit: number = 10, entrepriseId
       skip,
       take: limit,
       where,
-      orderBy: { dateEnvoi: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     }),
     prisma.contact.count({ where }),
   ]);

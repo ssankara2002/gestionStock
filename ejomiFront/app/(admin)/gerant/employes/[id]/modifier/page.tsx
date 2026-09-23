@@ -57,9 +57,10 @@ export default function ModifierEmployePage({ params }: { params: Promise<{ id: 
     const fetchData = async () => {
       try {
         setLoading(true)
+        const entrepriseId = entreprise?.id ?? (typeof window !== "undefined" ? Number(localStorage.getItem("entrepriseId")) || undefined : undefined)
         const [employeRes, rolesRes] = await Promise.all([
           employesService.getById(resolvedParams.id),
-          rolesService.getAll(entreprise?.id),
+          rolesService.getAll(entrepriseId),
         ])
 
         const employeData = employeRes.data.data
