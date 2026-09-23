@@ -113,7 +113,7 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
 
     const userData = {
       nom,
-      prenom: prenom || undefined,
+      prenom: prenom || '',
       email: email || null,
       tel: tel || null,
       adresse,
