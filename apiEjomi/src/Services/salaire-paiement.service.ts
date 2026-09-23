@@ -284,20 +284,21 @@ const generateBulletinPaiePdf = async (paiementId: number): Promise<Buffer | nul
       doc.y = currentY
 
       // NET À PAYER (encadré)
+      const netY = doc.y
       doc
-        .rect(40, doc.y, 339.53, 35)
+        .rect(40, netY, 339.53, 40)
         .fillAndStroke('#2c3e50', '#2c3e50')
         .fillColor('#ffffff')
         .fontSize(11)
         .font('Helvetica-Bold')
-        .text('NET À PAYER', 50, doc.y + 8)
+        .text('NET À PAYER', 50, netY + 6, { lineBreak: false })
         .fontSize(14)
-        .text(`${totalBrut.toLocaleString()} FCFA`, 250, doc.y + 8)
+        .text(`${totalBrut.toLocaleString()} FCFA`, 220, netY + 4, { lineBreak: false })
         .fontSize(7)
         .font('Helvetica')
-        .text(`Mode: ${paiement.modePaiement}`, 50, doc.y + 24)
+        .text(`Mode: ${paiement.modePaiement}`, 50, netY + 24, { lineBreak: false })
 
-      doc.y += 45
+      doc.y = netY + 50
       doc.fillColor('#000000')
 
       // Pied de page
