@@ -29,6 +29,7 @@ import salairePaiementRoutes from './salaire-paiement.routes';
 import transfertRoutes from './transfert.route';
 import lotRoutes from './lot.route';
 import bilanRoutes from './bilan.route';
+import inventaireMatierePremiereRoutes from './inventaire_matiere_premiere.route';
 
 const router = Router();
 
@@ -63,6 +64,7 @@ router.use('/salaire-paiements', salairePaiementRoutes);
 router.use('/transferts', transfertRoutes);
 router.use('/lots', lotRoutes);
 router.use('/bilan', bilanRoutes);
+router.use('/inventaire-ingredients', inventaireMatierePremiereRoutes);
 
 // Health check route
 router.get('/health', (req, res) => {

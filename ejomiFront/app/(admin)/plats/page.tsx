@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Edit, Plus, Search, Trash2, Utensils } from "lucide-react"
+import { Edit, Plus, Search, Trash2, Utensils, ChefHat, PlayCircle, Warehouse } from "lucide-react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -69,11 +69,16 @@ export default function PlatsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2"><Utensils className="h-7 w-7" />Plats</h1>
-          <p className="text-muted-foreground">Gérez les plats vendus par votre entreprise. Les plats ne sont pas stockés.</p>
+          <p className="text-muted-foreground">Gérez les plats vendus. Le stock disponible reflète les portions prêtes à servir.</p>
         </div>
-        <PermissionGuard permission="plat.create">
-          <Button asChild><Link href="/plats/nouveau"><Plus className="mr-2 h-4 w-4" />Nouveau plat</Link></Button>
-        </PermissionGuard>
+        <div className="flex gap-2">
+          {/* <Button variant="outline" asChild>
+            <Link href="/plats/capacite"><ChefHat className="mr-2 h-4 w-4" />Capacité de production</Link>
+          </Button> */}
+          <PermissionGuard permission="plat.create">
+            <Button asChild><Link href="/plats/nouveau"><Plus className="mr-2 h-4 w-4" />Nouveau plat</Link></Button>
+          </PermissionGuard>
+        </div>
       </div>
 
       <Card>
@@ -87,15 +92,22 @@ export default function PlatsPage() {
             <>
               <div className="rounded-md border overflow-x-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Image</TableHead><TableHead>Plat</TableHead><TableHead>Description</TableHead><TableHead>Prix de vente</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Image</TableHead><TableHead>Plat</TableHead><TableHead>Description</TableHead><TableHead>Prix de vente</TableHead><TableHead className="text-right">Stock disponible</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {plats.length === 0 ? <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun plat trouvé.</TableCell></TableRow> : plats.map((plat: Plat) => (
+                    {plats.length === 0 ? <TableRow><TableCell colSpan={6} className="h-24 text-center">Aucun plat trouvé.</TableCell></TableRow> : plats.map((plat: Plat) => (
                       <TableRow key={plat.id}>
                         <TableCell><img src={imageUrl(plat.image)} alt={plat.libelle} className="h-14 w-14 rounded object-cover" /></TableCell>
                         <TableCell className="font-medium">{plat.libelle}</TableCell>
                         <TableCell className="max-w-xs text-muted-foreground">{plat.description || "-"}</TableCell>
                         <TableCell>{plat.prixVenteUnitaire} FCFA</TableCell>
+                        <TableCell className="text-right">
+                          {(plat.stockPlat ?? 0) > 0
+                            ? <span className="inline-flex items-center gap-1 font-semibold text-orange-600"><Warehouse className="h-4 w-4" />{plat.stockPlat}</span>
+                            : <span className="text-muted-foreground text-sm">0</span>}
+                        </TableCell>
                         <TableCell className="text-right"><div className="flex justify-end gap-2">
+                          {/* <Button variant="outline" size="sm" asChild><Link href={`/plats/${plat.id}/recette`}><ChefHat className="mr-1 h-4 w-4" />Recette</Link></Button> */}
+                          {/* <Button variant="outline" size="sm" asChild><Link href={`/plats/${plat.id}/preparations`}><PlayCircle className="mr-1 h-4 w-4" />Préparer</Link></Button> */}
                           {hasPermission("plat.update") && <Button variant="outline" size="sm" asChild><Link href={`/plats/${plat.id}/modifier`}><Edit className="mr-1 h-4 w-4" />Modifier</Link></Button>}
                           {hasPermission("plat.delete") && <Button variant="destructive" size="sm" onClick={() => { if (confirm(`Supprimer le plat « ${plat.libelle} » ?`)) deleteMutation.mutate(plat.id) }}><Trash2 className="mr-1 h-4 w-4" />Supprimer</Button>}
                         </div></TableCell>

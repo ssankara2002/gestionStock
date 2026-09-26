@@ -4,6 +4,7 @@ export interface Plat {
   description?: string | null
   image?: string | null
   prixVenteUnitaire: number
+  stockPlat?: number
   entrepriseId?: number | null
   createdAt?: string
   updatedAt?: string

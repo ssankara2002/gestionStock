@@ -28,12 +28,14 @@ const permissions = [
   { key: 'employe.create', description: 'Créer un employé' },
   { key: 'employe.update', description: 'Modifier un employé' },
   { key: 'employe.delete', description: 'Supprimer un employé' },
+  { key: 'employe.export', description: 'Exporter les données employés' },
 
   // Absence permissions
   { key: 'absence.read', description: 'Voir les absences' },
   { key: 'absence.create', description: 'Créer une absence' },
   { key: 'absence.update', description: 'Modifier une absence' },
   { key: 'absence.delete', description: 'Supprimer une absence' },
+  { key: 'absence.statistics', description: 'Voir les statistiques d\'absences' },
 
   // Conge permissions
   { key: 'conge.read', description: 'Voir les congés' },
@@ -48,14 +50,14 @@ const permissions = [
   { key: 'produit.delete', description: 'Supprimer un produit' },
 
   // Plat permissions
-  { key: 'plat.read', description: 'Voir les plats' },
+  { key: 'plat.read', description: 'Voir les plats et préparations' },
   { key: 'plat.create', description: 'Créer un plat' },
-  { key: 'plat.update', description: 'Modifier un plat' },
+  { key: 'plat.update', description: 'Modifier un plat / enregistrer une préparation' },
   { key: 'plat.delete', description: 'Supprimer un plat' },
 
   // Commande permissions
-  { key: 'commande.read', description: 'Voir les commandes' },
-  { key: 'commande.create', description: 'Créer une commande' },
+  { key: 'commande.read', description: 'Voir les commandes / ventes' },
+  { key: 'commande.create', description: 'Créer une commande / vente' },
   { key: 'commande.update', description: 'Modifier une commande' },
   { key: 'commande.delete', description: 'Supprimer une commande' },
 
@@ -66,10 +68,11 @@ const permissions = [
   { key: 'paiement.delete', description: 'Supprimer un paiement' },
 
   // Livraison permissions
-  // { key: 'livraison.read', description: 'Voir les livraisons' },
-  // { key: 'livraison.create', description: 'Créer une livraison' },
-  // { key: 'livraison.update', description: 'Modifier une livraison' },
-  // { key: 'livraison.delete', description: 'Supprimer une livraison' },
+  { key: 'livraison.read', description: 'Voir les livraisons' },
+  { key: 'livraison.create', description: 'Créer une livraison' },
+  { key: 'livraison.update', description: 'Modifier une livraison' },
+  { key: 'livraison.delete', description: 'Supprimer une livraison' },
+  { key: 'livraison.assign', description: 'Assigner une livraison' },
 
   // Fournisseur permissions
   { key: 'fournisseur.read', description: 'Voir les fournisseurs' },
@@ -77,59 +80,73 @@ const permissions = [
   { key: 'fournisseur.update', description: 'Modifier un fournisseur' },
   { key: 'fournisseur.delete', description: 'Supprimer un fournisseur' },
 
-  // Approvisionnement permissions
-  { key: 'approvisionnement.read', description: 'Voir les approvisionnements' },
-  { key: 'approvisionnement.create', description: 'Créer un approvisionnement' },
-  { key: 'approvisionnement.update', description: 'Modifier un approvisionnement' },
-  { key: 'approvisionnement.delete', description: 'Supprimer un approvisionnement' },
+  // Approvisionnement produits permissions
+  { key: 'approvisionnement.read', description: 'Voir les approvisionnements produits' },
+  { key: 'approvisionnement.create', description: 'Créer un approvisionnement produits' },
+  { key: 'approvisionnement.update', description: 'Modifier un approvisionnement produits' },
+  { key: 'approvisionnement.delete', description: 'Supprimer un approvisionnement produits' },
 
-  // Production permissions
-  // { key: 'production.read', description: 'Voir les productions' },
-  // { key: 'production.create', description: 'Créer une production' },
-  // { key: 'production.update', description: 'Modifier une production' },
-  // { key: 'production.delete', description: 'Supprimer une production' },
+  // Approvisionnement matières premières permissions
+  { key: 'approvisionnement_matiere_premiere.read', description: 'Voir les approvisionnements ingrédients' },
+  { key: 'approvisionnement_matiere_premiere.create', description: 'Créer un approvisionnement ingrédients' },
+  { key: 'approvisionnement_matiere_premiere.update', description: 'Modifier un approvisionnement ingrédients' },
+  { key: 'approvisionnement_matiere_premiere.delete', description: 'Supprimer un approvisionnement ingrédients' },
 
-  // Matiere Premiere permissions
-  // { key: 'matiere_premiere.read', description: 'Voir les matières premières' },
-  // { key: 'matiere_premiere.create', description: 'Créer une matière première' },
-  // { key: 'matiere_premiere.update', description: 'Modifier une matière première' },
-  // { key: 'matiere_premiere.delete', description: 'Supprimer une matière première' },
+  // Matière première (ingrédients) permissions
+  { key: 'matiere_premiere.read', description: 'Voir les ingrédients' },
+  { key: 'matiere_premiere.create', description: 'Créer un ingrédient' },
+  { key: 'matiere_premiere.update', description: 'Modifier un ingrédient / inventaire ingrédients' },
+  { key: 'matiere_premiere.delete', description: 'Supprimer un ingrédient' },
+
+  // Lot de stock permissions
+  { key: 'lot_stock.read', description: 'Voir les lots de stock et le rapport des lots' },
+  { key: 'lot_stock.update', description: 'Modifier un lot de stock' },
+  { key: 'lot_stock.delete', description: 'Supprimer un lot de stock' },
+
+  // Transfert de stock permissions
+  { key: 'transfert.read', description: 'Voir les transferts de stock' },
+  { key: 'transfert.create', description: 'Créer un transfert de stock' },
+  { key: 'transfert.update', description: 'Modifier un transfert' },
+  { key: 'transfert.delete', description: 'Supprimer un transfert' },
 
   // Inventaire permissions
   { key: 'inventaire.read', description: 'Voir les inventaires' },
-  { key: 'inventaire.create', description: 'Créer un inventaire' },
+  { key: 'inventaire.create', description: 'Créer / valider un inventaire' },
   { key: 'inventaire.update', description: 'Modifier un inventaire' },
   { key: 'inventaire.delete', description: 'Supprimer un inventaire' },
 
-  // Transaction permissions
-  { key: 'transaction.read', description: 'Voir les transactions' },
+  // Transaction / bilan permissions
+  { key: 'transaction.read', description: 'Voir les transactions et le bilan financier' },
   { key: 'transaction.create', description: 'Créer une transaction' },
   { key: 'transaction.update', description: 'Modifier une transaction' },
   { key: 'transaction.delete', description: 'Supprimer une transaction' },
 
   // Contact permissions
-  { key: 'contact.read', description: 'Voir les contacts' },
+  { key: 'contact.read', description: 'Voir les messages / contacts' },
   { key: 'contact.create', description: 'Créer un contact' },
   { key: 'contact.update', description: 'Modifier un contact' },
   { key: 'contact.delete', description: 'Supprimer un contact' },
 
-  // Salaire Paiement permissions
-  { key: 'salaire.read', description: 'Voir les salaires' },
-  { key: 'salaire.create', description: 'Créer un salaire' },
-  { key: 'salaire.update', description: 'Modifier un salaire' },
-  { key: 'salaire.delete', description: 'Supprimer un salaire' },
+  // Salaire paiement permissions
+  { key: 'salaire_paiement.read', description: 'Voir les paiements de salaires' },
+  { key: 'salaire_paiement.create', description: 'Créer un paiement de salaire' },
+  { key: 'salaire_paiement.update', description: 'Modifier un paiement de salaire' },
+  { key: 'salaire_paiement.delete', description: 'Supprimer un paiement de salaire' },
+  { key: 'salaire_paiement.export', description: 'Exporter / télécharger bulletin de paie' },
+
+  // Dashboard
   { key: 'dashboard.read', description: 'Voir le tableau de bord' },
 ];
 
 async function main() {
   console.log('🌱 Début du seeding des permissions...');
 
-  // Créer toutes les permissions
+  // Créer toutes les permissions (entrepriseId null = permission globale)
   for (const permission of permissions) {
     await prisma.permission.upsert({
-      where: { key: permission.key },
+      where: { key_entrepriseId: { key: permission.key, entrepriseId: null as any } },
       update: { description: permission.description },
-      create: permission,
+      create: { ...permission, entrepriseId: null },
     });
   }
 

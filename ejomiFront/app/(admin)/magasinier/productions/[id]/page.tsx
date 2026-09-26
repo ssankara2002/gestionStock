@@ -1,215 +1,212 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { use } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Package, Calendar, User, Hash } from "lucide-react"
+import { ArrowLeft, ChefHat, Calendar, Utensils, Edit, Trash2, Warehouse } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { productionService } from "@/services/production-service"
-import type { Production } from "@/types/production"
+import { usePermissions } from "@/hooks/usePermissions"
+import apiClient from "@/services/api-client"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 
-export default function ProductionDetailsPage() {
-  const params = useParams()
+export default function PreparationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const { toast } = useToast()
-  const [production, setProduction] = useState<Production | null>(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const { hasPermission } = usePermissions()
 
-  useEffect(() => {
-    const loadProduction = async () => {
-      if (!params.id) return
+  const { data: prep, isLoading } = useQuery({
+    queryKey: ["preparation", id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/plats/preparations/${id}`)
+      return (res.data as any).data
+    },
+  })
 
-      try {
-        const data = await productionService.getById(params.id as string)
-        setProduction(data)
-      } catch (error: any) {
-        toast({
-          title: "Erreur",
-          description: error.response?.data?.message || "Impossible de charger les détails de la production",
-          variant: "destructive",
-        })
-        router.push("/magasinier/productions")
-      } finally {
-        setLoading(false)
-      }
+  const deleteMutation = useMutation({
+    mutationFn: () => apiClient.delete(`/plats/preparations/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["preparations-historique"] })
+      toast({ title: "Préparation supprimée", description: "Le stock des ingrédients a été restauré." })
+      router.push("/magasinier/productions")
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.response?.data?.message || e.message, variant: "destructive" }),
+  })
+
+  const confirmerSupprimer = () => {
+    if (confirm("Supprimer cette préparation ? Le stock des ingrédients sera restauré.")) {
+      deleteMutation.mutate()
     }
-
-    loadProduction()
-  }, [params.id, toast, router])
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">Chargement...</div>
-      </div>
-    )
-  }
+  if (isLoading) return <div className="container py-8 text-center text-muted-foreground">Chargement...</div>
+  if (!prep) return <div className="container py-8 text-center text-muted-foreground">Préparation introuvable.</div>
 
-  if (!production) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">Production non trouvée</div>
-      </div>
-    )
-  }
+  const lignes = prep.lignes || []
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <main className="flex-1">
-        <div className="container py-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" asChild>
-                <Link href="/magasinier/productions">
-                  <ArrowLeft className="h-4 w-4" />
-                </Link>
-              </Button>
-              <h1 className="text-2xl font-bold">Détails de la production</h1>
+    <div className="container py-8 space-y-6 max-w-3xl">
+
+      {/* En-tête */}
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <ChefHat className="h-6 w-6" />
+            Préparation #{prep.id}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {format(new Date(prep.datePreparation), "dd MMMM yyyy à HH:mm", { locale: fr })}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {hasPermission("plat.update") && (
+            <Button variant="outline" asChild>
+              <Link href={`/magasinier/productions/${id}/modifier`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Modifier
+              </Link>
+            </Button>
+          )}
+          {hasPermission("plat.update") && (
+            <Button variant="destructive" onClick={confirmerSupprimer} disabled={deleteMutation.isPending}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              {deleteMutation.isPending ? "Suppression..." : "Supprimer"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Infos générales */}
+      <Card>
+        <CardHeader><CardTitle>Informations</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div className="flex items-start gap-2">
+            <Utensils className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-muted-foreground">Plat</p>
+              <p className="font-semibold">{prep.plat?.libelle || "—"}</p>
             </div>
           </div>
+          <div className="flex items-start gap-2">
+            <ChefHat className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-muted-foreground">Plats préparés</p>
+              <Badge variant="secondary" className="text-base mt-0.5">{prep.nombrePortions} plat{prep.nombrePortions !== 1 ? "s" : ""}</Badge>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Warehouse className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-muted-foreground">Stock restant (plat)</p>
+              {(prep.stockPlatRestant ?? prep.plat?.stockPlat ?? 0) > 0
+                ? <Badge variant="outline" className="text-base mt-0.5 text-orange-700 border-orange-300">
+                    {prep.stockPlatRestant ?? prep.plat?.stockPlat} portion{(prep.stockPlatRestant ?? prep.plat?.stockPlat) !== 1 ? "s" : ""} en stock
+                  </Badge>
+                : <Badge variant="outline" className="text-base mt-0.5 text-green-700 border-green-300">Tout vendu</Badge>
+              }
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-muted-foreground">Date</p>
+              <p className="font-semibold">{format(new Date(prep.datePreparation), "dd/MM/yyyy HH:mm", { locale: fr })}</p>
+            </div>
+          </div>
+          {prep.note && (
+            <div className="sm:col-span-3">
+              <p className="text-muted-foreground">Note</p>
+              <p className="font-medium">{prep.note}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informations générales</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="flex items-start gap-3">
-                    <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Produit fabriqué</p>
-                      <p className="font-semibold">{production.produit?.libelle || "N/A"}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Hash className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Quantité fabriquée</p>
-                      <div className="font-semibold">
-                        <Badge variant="secondary" className="text-base">
-                          {production.quantiteFabriquee} unités
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Date de production</p>
-                      <p className="font-semibold">{formatDate(production.dateProduction)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Responsable</p>
-                      <p className="font-semibold">
-                        {production.employe?.user
-                          ? `${production.employe.user.prenom} ${production.employe.user.nom}`
-                          : "N/A"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {production.lot && (
-                    <div className="flex items-start gap-3">
-                      <Hash className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Numéro de lot</p>
-                        <Badge variant="outline">{production.lot}</Badge>
-                      </div>
-                    </div>
-                  )}
+      {/* Stock restant de ce plat */}
+      {(() => {
+        const stock: number = prep.stockPlatRestant ?? prep.plat?.stockPlat ?? 0
+        const totalPrepares: number = prep.totalPreparesToutTemps ?? 0
+        const totalVendus: number = prep.totalVendusToutTemps ?? 0
+        if (stock === 0) {
+          return (
+            <Card className="border-green-200 bg-green-50/50">
+              <CardContent className="pt-4 flex items-center gap-4">
+                <Warehouse className="h-8 w-8 text-green-600" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Stock de plats "{prep.plat?.libelle}"</p>
+                  <p className="text-xl font-bold text-green-600">Tout vendu — 0 portion en stock</p>
+                  {totalPrepares > 0 && <p className="text-xs text-muted-foreground mt-1">{totalPrepares} préparés · {totalVendus} vendus (tout temps)</p>}
                 </div>
               </CardContent>
             </Card>
+          )
+        }
+        return (
+          <Card className="border-orange-200 bg-orange-50/50">
+            <CardContent className="pt-4 flex items-center gap-4">
+              <Warehouse className="h-8 w-8 text-orange-500" />
+              <div>
+                <p className="text-sm text-muted-foreground">Stock de plats "{prep.plat?.libelle}" disponibles</p>
+                <p className="text-xl font-bold text-orange-600">
+                  {stock} portion{stock !== 1 ? "s" : ""} en stock (frigo ou service)
+                </p>
+                {totalPrepares > 0 && <p className="text-xs text-muted-foreground mt-1">{totalPrepares} préparés · {totalVendus} vendus (tout temps)</p>}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
 
-            {production.consommations && production.consommations.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Matières premières consommées</CardTitle>
-                  <CardDescription>
-                    Liste des matières premières utilisées pour cette production
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Matière première</TableHead>
-                          <TableHead>Catégorie</TableHead>
-                          <TableHead className="text-right">Quantité consommée</TableHead>
-                          <TableHead className="text-right">Prix unitaire</TableHead>
-                          <TableHead className="text-right">Coût total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {production.consommations.map((consommation) => (
-                          <TableRow key={consommation.id}>
-                            <TableCell className="font-medium">
-                              {consommation.matierePremiere?.nom || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {consommation.matierePremiere?.categorie || "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant="secondary">{consommation.quantite}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {consommation.matierePremiere?.prixAchat.toFixed(2)} FCFA
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">
-                              {(
-                                consommation.quantite *
-                                (consommation.matierePremiere?.prixAchat || 0)
-                              ).toFixed(2)}{" "}
-                              FCFA
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow className="font-semibold bg-muted/50">
-                          <TableCell colSpan={4} className="text-right">
-                            Coût total de production
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {production.consommations
-                              .reduce(
-                                (sum, c) =>
-                                  sum + c.quantite * (c.matierePremiere?.prixAchat || 0),
-                                0
-                              )
-                              .toFixed(2)}{" "}
-                            FCFA
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </main>
+      {/* Ingrédients utilisés */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ingrédients utilisés</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {lignes.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6 text-sm">Aucun ingrédient enregistré.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ingrédient</TableHead>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead className="text-right">Quantité utilisée</TableHead>
+                  <TableHead className="text-right">Stock actuel</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lignes.map((l: any) => (
+                  <TableRow key={l.id}>
+                    <TableCell className="font-medium">{l.matierePremiere?.nom || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{l.matierePremiere?.categorie || "—"}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {l.quantiteUtilisee} <span className="text-xs text-muted-foreground">{l.matierePremiere?.unite}</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                      {l.matierePremiere?.quantiteStock ?? "—"} <span className="text-xs">{l.matierePremiere?.unite}</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/40 font-medium">
+                  <TableCell colSpan={2}>Total ingrédients</TableCell>
+                  <TableCell colSpan={2} className="text-right">{lignes.length} type{lignes.length !== 1 ? "s" : ""}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

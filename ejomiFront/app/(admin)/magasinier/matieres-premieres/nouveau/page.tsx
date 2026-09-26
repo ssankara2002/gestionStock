@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast"
 import { createMatierePremiere } from "@/services/matiere-premiere-service"
 import { matierePremiereSchema, type MatierePremiereFormValues } from "@/lib/validations"
 
+const UNITES = ["g", "kg", "mg", "mL", "cL", "L", "unité", "pièce", "sachet", "boîte", "bouteille", "cuillère"]
+
 export default function NouvelleMatierePremierePage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -27,14 +29,14 @@ export default function NouvelleMatierePremierePage() {
     formState: { errors },
   } = useForm<MatierePremiereFormValues>({
     resolver: zodResolver(matierePremiereSchema),
-    defaultValues: { nom: "", categorie: "", description: "", quantiteStock: 0, prixAchat: 0 },
+    defaultValues: { nom: "", categorie: "", description: "", unite: "unité" },
   })
 
   const onSubmit = async (data: MatierePremiereFormValues) => {
     setIsSubmitting(true)
     try {
       await createMatierePremiere(data)
-      toast({ title: "Matière première ajoutée", description: `${data.nom} a été ajouté avec succès` })
+      toast({ title: "Ingrédient ajoutée", description: `${data.nom} a été ajouté avec succès` })
       router.push("/magasinier/matieres-premieres")
       router.refresh()
     } catch (error: any) {
@@ -49,76 +51,57 @@ export default function NouvelleMatierePremierePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <main className="flex-1">
-        <div className="container py-8">
-          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" asChild>
-                <Link href="/magasinier/matieres-premieres"><ArrowLeft className="h-4 w-4" /></Link>
-              </Button>
-              <h1 className="text-xl sm:text-2xl font-bold">Nouvelle Matière Première</h1>
-            </div>
-            <Button type="submit" form="matiere-form" disabled={isSubmitting}>
-              <Save className="mr-2 h-4 w-4" />{isSubmitting ? "Enregistrement..." : "Enregistrer"}
+    <div className="container py-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Button variant="outline" size="icon" asChild>
+              <Link href="/magasinier/matieres-premieres"><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
+            <h1 className="text-xl sm:text-2xl font-bold">Nouvelle Ingrédient</h1>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Informations de la matière première</CardTitle>
-              <CardDescription>Remplissez les informations de la nouvelle matière première</CardDescription>
+              <CardTitle>Informations de la ingrédient</CardTitle>
+              <CardDescription>Remplissez les informations de la nouvelle ingrédient</CardDescription>
             </CardHeader>
             <CardContent>
-              <form id="matiere-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="nom">Nom <span className="text-red-500">*</span></Label>
-                    <Input id="nom" placeholder="Ex: Or 24 carats" {...register("nom")} />
+                    <Input id="nom" placeholder="Ex: Tomate" {...register("nom")} />
                     {errors.nom && <p className="text-sm text-red-500 mt-1">{errors.nom.message}</p>}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="categorie">Catégorie <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
-                    <Input id="categorie" placeholder="Ex: Métaux précieux" {...register("categorie")} />
+                    <Input id="categorie" placeholder="Ex: Légumes" {...register("categorie")} />
                     {errors.categorie && <p className="text-sm text-red-500 mt-1">{errors.categorie.message}</p>}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="quantiteStock">Quantité en stock initiale <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="quantiteStock"
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      {...register("quantiteStock")}
-                    />
-                    {errors.quantiteStock && <p className="text-sm text-red-500 mt-1">{errors.quantiteStock.message}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="prixAchat">Prix d'achat (FCFA) <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="prixAchat"
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      {...register("prixAchat")}
-                    />
-                    {errors.prixAchat && <p className="text-sm text-red-500 mt-1">{errors.prixAchat.message}</p>}
+                    <Label htmlFor="unite">Unité de mesure <span className="text-red-500">*</span></Label>
+                    <select id="unite" {...register("unite")} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      {UNITES.map((u) => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                    {errors.unite && <p className="text-sm text-red-500 mt-1">{errors.unite.message}</p>}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Description <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
-                  <Textarea id="description" placeholder="Description de la matière première..." rows={4} {...register("description")} />
+                  <Textarea id="description" placeholder="Description de la ingrédient..." rows={4} {...register("description")} />
                   {errors.description && <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={isSubmitting}>
+                    <Save className="mr-2 h-4 w-4" />{isSubmitting ? "Enregistrement..." : "Enregistrer"}
+                  </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
-        </div>
-      </main>
     </div>
   )
 }

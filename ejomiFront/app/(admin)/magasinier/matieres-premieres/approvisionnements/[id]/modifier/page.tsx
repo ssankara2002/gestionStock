@@ -121,7 +121,7 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
 
   const ajouterLigne = (selectedMatiereId: string) => {
     if (!selectedMatiereId) {
-      toast({ title: "Erreur", description: "Veuillez sélectionner une matière première", variant: "destructive" })
+      toast({ title: "Erreur", description: "Veuillez sélectionner une ingrédient", variant: "destructive" })
       return
     }
 
@@ -143,12 +143,12 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
     setSelectedPrixUnitaire(0)
     setSelectedMatierePremiereId("")
 
-    toast({ title: "Matière première ajoutée" })
+    toast({ title: "Ingrédient ajoutée" })
   }
 
   const supprimerLigne = (ligneId: string) => {
     setLignesApprovisionnement((prevLignes) => prevLignes.filter((ligne) => ligne.id !== ligneId))
-    toast({ title: "Matière première retirée" })
+    toast({ title: "Ingrédient retirée" })
   }
 
   const updateQuantite = (ligneId: string, quantite: number) => {
@@ -180,7 +180,7 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
     if (!lignesApprovisionnement.length) {
       toast({
         title: "Erreur",
-        description: "Veuillez ajouter au moins une matière première à l'approvisionnement",
+        description: "Veuillez ajouter au moins une ingrédient à l'approvisionnement",
         variant: "destructive",
       })
       return
@@ -258,16 +258,16 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
                 </Card>
 
                 <Card>
-                  <CardHeader><CardTitle>Ajouter des matières premières</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>Ajouter des ingrédients</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
                       <div className="flex-1 w-full">
-                        <Label htmlFor="matiere">Matière Première</Label>
+                        <Label htmlFor="matiere">Ingrédient</Label>
                         <SearchableSelect
                           options={matieres.map((m) => ({ value: m.id.toString(), label: m.nom }))}
                           value={selectedMatierePremiereId}
                           onValueChange={setSelectedMatierePremiereId}
-                          placeholder="Sélectionner une matière première"
+                          placeholder="Sélectionner une ingrédient"
                           searchPlaceholder="Rechercher..."
                           emptyMessage="Aucune matière trouvée"
                           className="w-full mt-1"
@@ -309,13 +309,13 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
                   <CardHeader><CardTitle>Détails</CardTitle></CardHeader>
                   <CardContent>
                     {lignesApprovisionnement.length === 0 ? (
-                      <div className="text-center p-8">Aucune matière première ajoutée</div>
+                      <div className="text-center p-8">Aucune ingrédient ajoutée</div>
                     ) : (
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Matière Première</TableHead>
+                              <TableHead>Ingrédient</TableHead>
                               <TableHead className="text-center">Quantité</TableHead>
                               <TableHead className="text-right">Prix unitaire</TableHead>
                               <TableHead className="text-right">Total</TableHead>
@@ -324,7 +324,7 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
                           </TableHeader>
                           <TableBody>
                             {lignesApprovisionnement.map((ligne) => {
-                              const matiere = matieres.find((m) => m.id === String(ligne.matierePremiereId))
+                              const matiere = matieres.find((m) => m.id.toString() === ligne.matierePremiereId.toString())
                               const prixUnitaire = ligne.quantite > 0 ? ligne.montant / ligne.quantite : 0
 
                               return (

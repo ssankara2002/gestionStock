@@ -94,6 +94,7 @@ async function main() {
   const scopes: (number | null)[] = entreprises.length > 0
     ? [null, ...entreprises.map(entreprise => entreprise.id)]
     : [null];
+    
 
   const permissionsByScope = new Map<string, any[]>();
   for (const entrepriseId of scopes) {

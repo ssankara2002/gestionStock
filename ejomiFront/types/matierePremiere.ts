@@ -6,7 +6,8 @@ export interface MatierePremiere {
   categorie?: string
   description?: string
   quantiteStock: number
-  prixAchat: number
+  unite?: string
+  prixAchat?: number
   consommations?: MatierePremiereConsommation[]
 }
 
@@ -14,8 +15,9 @@ export interface MatierePremiereCreateData {
   nom: string
   categorie?: string
   description?: string
-  quantiteStock: number
-  prixAchat: number
+  quantiteStock?: number
+  unite?: string
+  prixAchat?: number
 }
 
 export interface MatierePremiereUpdateData extends Partial<MatierePremiereCreateData> {}

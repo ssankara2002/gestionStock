@@ -8,7 +8,9 @@ interface MatierePremiereCreateData {
   categorie?: string;
   description?: string;
   quantiteStock: number;
+  unite?: string;
   prixAchat: number;
+  entrepriseId?: number;
 }
 
 interface MatierePremiereUpdateData {
@@ -16,6 +18,7 @@ interface MatierePremiereUpdateData {
   categorie?: string;
   description?: string;
   quantiteStock?: number;
+  unite?: string;
   prixAchat?: number;
 }
 
@@ -31,7 +34,7 @@ const getAllMatieresPremieres = async (queryParams: any, entrepriseId?: number) 
       include: {
         consommations: true,
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { id: 'desc' },
     }),
     prisma.matierePremiere.count({ where }),
   ]);
@@ -69,7 +72,9 @@ const createMatierePremiere = async (data: MatierePremiereCreateData) => {
       categorie: data.categorie,
       description: data.description,
       quantiteStock: data.quantiteStock,
+      unite: data.unite || 'unité',
       prixAchat: data.prixAchat,
+      ...(data.entrepriseId ? { entrepriseId: data.entrepriseId } : {}),
     },
   });
 };
@@ -82,6 +87,7 @@ const updateMatierePremiere = async (id: number, data: MatierePremiereUpdateData
       categorie: data.categorie,
       description: data.description,
       quantiteStock: data.quantiteStock,
+      unite: data.unite,
       prixAchat: data.prixAchat,
     },
   });

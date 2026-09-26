@@ -213,6 +213,7 @@ model Plat {
   image             String?
   categorie         CategoriePlat
   prixVenteUnitaire Float
+  stockPlat         Int           @default(0)
   entrepriseId      Int?
 
   createdAt         DateTime      @default(now())
@@ -220,10 +221,48 @@ model Plat {
 
   entreprise        Entreprise?   @relation(fields: [entrepriseId], references: [id])
   lignesCommande    LigneCommande[]
+  recette           RecettePlat[]
+  preparations      PreparationPlat[]
 
   @@index([libelle])
   @@index([categorie])
   @@index([entrepriseId])
+}
+
+model RecettePlat {
+  id                Int             @id @default(autoincrement())
+  platId            Int
+  matierePremiereId Int
+  quantiteParPortion Float
+  unite             String          @default("g")
+  plat              Plat            @relation(fields: [platId], references: [id], onDelete: Cascade)
+  matierePremiere   MatierePremiere @relation(fields: [matierePremiereId], references: [id])
+
+  @@unique([platId, matierePremiereId])
+}
+
+model PreparationPlat {
+  id               Int                @id @default(autoincrement())
+  platId           Int
+  nombrePortions   Int                @default(1)
+  datePreparation  DateTime           @default(now())
+  note             String?
+  plat             Plat               @relation(fields: [platId], references: [id])
+  lignes           LignePreparation[]
+
+  @@index([platId])
+  @@index([datePreparation])
+}
+
+model LignePreparation {
+  id                Int             @id @default(autoincrement())
+  preparationId     Int
+  matierePremiereId Int
+  quantiteUtilisee  Float
+  preparation       PreparationPlat @relation(fields: [preparationId], references: [id], onDelete: Cascade)
+  matierePremiere   MatierePremiere @relation(fields: [matierePremiereId], references: [id])
+
+  @@index([preparationId])
 }
 
 model StockMagasin {
@@ -473,12 +512,15 @@ model MatierePremiere {
   nom                     String
   categorie               String?
   description             String?
-  quantiteStock           Int                           @default(0)
-  prixAchat               Float
+  quantiteStock           Float                         @default(0)
+  unite                   String                        @default("unité")
+  prixAchat               Float                         @default(0)
   entrepriseId            Int?
   entreprise              Entreprise?                   @relation(fields: [entrepriseId], references: [id])
   lignesApprovisionnement LigneApprovisionnement[]      @relation("MatierePremiereLignesAppro")
   consommations           MatierePremiereConsommation[]
+  recettes                RecettePlat[]
+  lignesPreparation       LignePreparation[]
 }
 
 model MatierePremiereConsommation {

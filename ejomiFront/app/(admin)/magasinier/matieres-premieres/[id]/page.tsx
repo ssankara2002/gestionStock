@@ -30,7 +30,7 @@ export default function MatierePremiereDetailsPage() {
       } catch (error: any) {
         toast({
           title: "Erreur",
-          description: error.response?.data?.message || "Impossible de charger les détails de la matière première",
+          description: error.response?.data?.message || "Impossible de charger les détails de la ingrédient",
           variant: "destructive",
         })
         router.push("/magasinier/matieres-premieres")
@@ -62,7 +62,7 @@ export default function MatierePremiereDetailsPage() {
   if (!matiere) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">Matière première non trouvée</div>
+        <div className="text-center">Ingrédient non trouvée</div>
       </div>
     )
   }
@@ -121,7 +121,7 @@ export default function MatierePremiereDetailsPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">Stock disponible</p>
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-lg">{matiere.quantiteStock}</p>
+                        <p className="font-semibold text-lg">{matiere.quantiteStock} <span className="text-sm font-normal text-muted-foreground">{(matiere as any).unite || "unité"}</span></p>
                         {getStockBadge(matiere.quantiteStock)}
                       </div>
                     </div>
@@ -141,7 +141,7 @@ export default function MatierePremiereDetailsPage() {
                     <div>
                       <p className="font-semibold text-orange-900 dark:text-orange-100">Alerte stock faible</p>
                       <p className="text-sm text-orange-700 dark:text-orange-300">
-                        Le stock de cette matière première est faible. Pensez à réapprovisionner.
+                        Le stock de cette ingrédient est faible. Pensez à réapprovisionner.
                       </p>
                     </div>
                   </div>
@@ -154,7 +154,7 @@ export default function MatierePremiereDetailsPage() {
                 <CardHeader>
                   <CardTitle>Historique des approvisionnements</CardTitle>
                   <CardDescription>
-                    Liste des derniers approvisionnements pour cette matière première.
+                    Liste des derniers approvisionnements pour cette ingrédient.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -193,7 +193,7 @@ export default function MatierePremiereDetailsPage() {
                 <CardHeader>
                   <CardTitle>Historique d'utilisation</CardTitle>
                   <CardDescription>
-                    Dernières productions ayant utilisé cette matière première
+                    Dernières productions ayant utilisé cette ingrédient
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

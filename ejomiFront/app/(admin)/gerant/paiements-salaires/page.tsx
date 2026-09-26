@@ -88,17 +88,7 @@ export default function PaiementsSalairesPage() {
       // Créer un blob à partir de la réponse
       const blob = new Blob([response.data], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
-
-      // Créer un lien temporaire et déclencher le téléchargement
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `bulletin-paie-${paiementId}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
-      // Nettoyer
+      window.open(url, '_blank')
     } catch (error) {
       console.error('Erreur lors du téléchargement du bulletin:', error)
       alert('Erreur lors du téléchargement du bulletin de paie')

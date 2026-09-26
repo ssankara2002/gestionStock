@@ -7,16 +7,29 @@ const prisma = new PrismaClient();
 
 export const createApprovisionnementMatierePremiere = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { fournisseurId, employeId, lignes } = req.body;
-    console.log(`[API] Tentative de création d'approvisionnement MP par l'employé ID: ${employeId}`);
-    
-    if (!fournisseurId || !employeId || !lignes || lignes.length === 0) {
-      console.warn('[API] Données de création d\'approvisionnement MP invalides:', { fournisseurId, employeId, nbLignes: lignes?.length });
-      res.status(400).json({ success: false, message: 'Fournisseur, employé et au moins une ligne sont requis.' });
+    const { fournisseurId, lignes } = req.body;
+
+    // Récupérer l'employeId depuis l'utilisateur connecté
+    const userId = req.user?.userId;
+    const prismaUser = await prisma.user.findUnique({ where: { id: userId }, include: { employe: true } });
+    const employeId = prismaUser?.employe?.id;
+
+    if (!fournisseurId || !lignes || lignes.length === 0) {
+      res.status(400).json({ success: false, message: 'Fournisseur et au moins une ligne sont requis.' });
       return;
     }
 
-    const newAppro = await approvisionnementMatierePremiereService.create({ fournisseurId, employeId, lignes });
+    if (!employeId) {
+      res.status(400).json({ success: false, message: 'Votre compte n\'est pas lié à un employé.' });
+      return;
+    }
+
+    const newAppro = await approvisionnementMatierePremiereService.create({
+      fournisseurId,
+      employeId,
+      entrepriseId: req.user?.entrepriseId,
+      lignes,
+    });
 
     console.log(`[API] Approvisionnement MP #${newAppro.id} créé avec succès.`);
     res.status(201).json({ success: true, message: 'Approvisionnement de matières premières créé avec succès', data: newAppro });

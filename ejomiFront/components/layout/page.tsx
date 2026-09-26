@@ -80,7 +80,7 @@ export default function ApprovisionnerMatierePremierePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!fournisseurId || lignes.length === 0) {
-      toast({ title: "Formulaire incomplet", description: "Veuillez sélectionner un fournisseur et ajouter au moins une matière première.", variant: "destructive" })
+      toast({ title: "Formulaire incomplet", description: "Veuillez sélectionner un fournisseur et ajouter au moins une ingrédient.", variant: "destructive" })
       return
     }
 
@@ -111,7 +111,7 @@ export default function ApprovisionnerMatierePremierePage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="text-xl sm:text-2xl font-bold">Nouvel Approvisionnement de Matières Premières</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Nouvel Approvisionnement de Ingrédients</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -134,13 +134,13 @@ export default function ApprovisionnerMatierePremierePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Matières premières à ajouter</CardTitle>
+            <CardTitle>Ingrédients à ajouter</CardTitle>
             <CardDescription>Ajoutez les articles reçus du fournisseur.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
               <div className="space-y-2 md:col-span-2">
-                <Label>Matière première</Label>
+                <Label>Ingrédient</Label>
                 <AppSelect
                   placeholder="Sélectionner..."
                   value={nouvelleLigne.matierePremiereId ? { value: nouvelleLigne.matierePremiereId, label: matieres.find(m => m.id.toString() === nouvelleLigne.matierePremiereId)?.nom ?? nouvelleLigne.matierePremiereId } : null}
@@ -164,7 +164,7 @@ export default function ApprovisionnerMatierePremierePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Matière première</TableHead>
+                      <TableHead>Ingrédient</TableHead>
                       <TableHead className="text-right">Quantité</TableHead>
                       <TableHead className="text-right">Montant</TableHead>
                       <TableHead className="w-12"></TableHead>

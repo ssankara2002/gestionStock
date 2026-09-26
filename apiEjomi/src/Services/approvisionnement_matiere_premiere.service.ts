@@ -12,6 +12,7 @@ interface LigneData {
 interface ApprovisionnementMatierePremiereCreateData {
   fournisseurId: number;
   employeId: number;
+  entrepriseId?: number;
   lignes: LigneData[];
 }
 
@@ -39,9 +40,10 @@ const create = async (data: ApprovisionnementMatierePremiereCreateData) => {
     const approvisionnement = await tx.approvisionnement.create({
       data: {
         montant: montantTotal,
-        dateApprovisionnement: new Date(), // Utiliser la date actuelle
+        dateApprovisionnement: new Date(),
         fournisseurId: data.fournisseurId,
         employeId: data.employeId,
+        ...(data.entrepriseId ? { entrepriseId: data.entrepriseId } : {}),
         lignes: {
           create: data.lignes.map(ligne => ({
             quantite: ligne.quantite,
@@ -73,9 +75,10 @@ const create = async (data: ApprovisionnementMatierePremiereCreateData) => {
 const getAll = async (queryParams: any, entrepriseId?: number) => {
   const { skip, take, page, limit } = getPaginationParams(queryParams);
 
-  // Filtrer pour ne voir que les approvisionnements de matières premières
-  const whereClause: any = { lignes: { some: { matierePremiereId: { not: null } } } };
-  if (entrepriseId) whereClause.entrepriseId = entrepriseId;
+  const whereClause: any = {
+    lignes: { some: { matierePremiereId: { not: null } } },
+    ...(entrepriseId ? { entrepriseId } : {}),
+  };
 
   const [approvisionnements, total] = await prisma.$transaction([
     prisma.approvisionnement.findMany({
@@ -140,7 +143,10 @@ const update = async (id: number, data: ApprovisionnementMatierePremiereUpdateDa
       updateData.lignes = {
         create: data.lignes.map(ligne => ({
           quantite: ligne.quantite,
+          prixUnitaire: ligne.montant / (ligne.quantite || 1),
           montant: ligne.montant,
+          dateFabrication: null,
+          datePeremption: null,
           matierePremiere: {
             connect: { id: ligne.matierePremiereId }
           }

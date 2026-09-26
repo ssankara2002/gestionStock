@@ -79,13 +79,7 @@ export default function CommandesPage() {
       if (!response.ok) throw new Error()
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `facture-commande-${commandeId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      if (a.parentNode === document.body) document.body.removeChild(a)
+      window.open(url, '_blank')
     } catch {
       toast({ title: "Erreur", description: "Impossible de télécharger la facture", variant: "destructive" })
     }

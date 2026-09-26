@@ -16,7 +16,6 @@ import { Separator } from "@/components/ui/separator"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Footer } from "@/components/layout/footer"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/context/auth-provider"
 import { matierePremiereService, fournisseurService } from "@/services"
 import { approvisionnementMatierePremiereService } from "@/services/approvisionnement-matiere-premiere-service"
 import type { MatierePremiere } from "@/types/matierePremiere"
@@ -41,8 +40,6 @@ interface LigneApprovisionnementMatierePremiereInput {
 export default function NouvelApprovisionnementMatierePremierePage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
-
   interface LigneApprovisionnementLocal extends LigneApprovisionnementMatierePremiereInput {
     id: string
   }
@@ -52,7 +49,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
   const [lignesApprovisionnement, setLignesApprovisionnement] = useState<LigneApprovisionnementLocal[]>([])
   const [montantTotal, setMontantTotal] = useState(0)
 
-  // État pour la sélection de matières premières
+  // État pour la sélection de ingrédients
   const [selectedMatierePremiereId, setSelectedMatierePremiereId] = useState<string>("")
   const [selectedQuantity, setSelectedQuantity] = useState(1)
   const [selectedPrixUnitaire, setSelectedPrixUnitaire] = useState(0)
@@ -70,7 +67,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     adresse: "",
   })
 
-  // État pour la nouvelle matière première
+  // État pour la nouvelle ingrédient
   const [newMatierePremiere, setNewMatierePremiere] = useState({
     nom: "",
     description: "",
@@ -88,18 +85,10 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     resolver: zodResolver(approvisionnementMatiereSchema),
     defaultValues: {
       fournisseurId: 0,
-      employeId: 0,
     },
   })
 
   const watchedFournisseurId = watch("fournisseurId")
-
-  // Mettre à jour l'employeId lorsque l'utilisateur est chargé
-  useEffect(() => {
-    if (user?.employe?.id) {
-      setValue("employeId", user.employe.id)
-    }
-  }, [user, setValue])
 
   // Charger les matières et les fournisseurs
   useEffect(() => {
@@ -117,7 +106,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
       } catch (error) {
         toast({
           title: "Erreur de chargement",
-          description: "Impossible de charger les matières premières ou les fournisseurs.",
+          description: "Impossible de charger les ingrédients ou les fournisseurs.",
           variant: "destructive",
         })
       }
@@ -136,7 +125,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     if (!selectedMatiereId) {
       toast({
         title: "Erreur",
-        description: "Veuillez sélectionner une matière première",
+        description: "Veuillez sélectionner une ingrédient",
         variant: "destructive",
       })
       return
@@ -169,7 +158,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     setSelectedMatierePremiereId("")
 
     toast({
-      title: "Matière première ajoutée",
+      title: "Ingrédient ajoutée",
       description: `${matiere.nom} a été ajoutée à l'approvisionnement`,
     })
   }
@@ -247,12 +236,12 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     }
   }
 
-  // Ajouter une nouvelle matière première
+  // Ajouter une nouvelle ingrédient
   const ajouterNouvelleMatierePremiere = async () => {
     if (!newMatierePremiere.nom) {
       toast({
         title: "Erreur",
-        description: "Le nom de la matière première est requis.",
+        description: "Le nom de la ingrédient est requis.",
         variant: "destructive",
       })
       return
@@ -262,7 +251,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
       const response = await matierePremiereService.createMatierePremiere(newMatierePremiere)
       const createdMatiere = response.data
 
-      // Ajouter la matière première à la liste
+      // Ajouter la ingrédient à la liste
       setMatieres((prevMatieres) => [...prevMatieres, createdMatiere])
 
       // Sélectionner automatiquement la matière créée
@@ -272,12 +261,12 @@ export default function NouvelApprovisionnementMatierePremierePage() {
       setNewMatierePremiere({ nom: "", description: "", prixAchat: 0, quantiteStock: 0 })
 
       toast({
-        title: "Matière première ajoutée",
+        title: "Ingrédient ajoutée",
         description: `${createdMatiere.nom} a été ajoutée et sélectionnée.`,
       })
     } catch (error: any) {
       toast({
-        title: "Erreur lors de l'ajout de la matière première",
+        title: "Erreur lors de l'ajout de la ingrédient",
         description: error.response?.data?.message || "Une erreur est survenue.",
         variant: "destructive",
       })
@@ -289,7 +278,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     if (!lignesApprovisionnement.length) {
       toast({
         title: "Erreur",
-        description: "Veuillez ajouter au moins une matière première à l'approvisionnement",
+        description: "Veuillez ajouter au moins une ingrédient à l'approvisionnement",
         variant: "destructive",
       })
       return
@@ -298,7 +287,6 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     try {
       const approData = {
         fournisseurId: data.fournisseurId,
-        employeId: data.employeId,
         lignes: lignesApprovisionnement.map(({ id, ...ligne }) => ligne),
       }
 
@@ -322,9 +310,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
   const selectedFournisseur = fournisseurs.find((f) => f.id === watchedFournisseurId)
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <main className="flex-1">
-        <div className="container py-8">
+    <div className="container py-8">
           <div className="flex items-center gap-2 mb-6">
             <Button asChild variant="ghost" size="sm">
               <Link href="/magasinier/matieres-premieres/approvisionnements">
@@ -334,7 +320,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
             </Button>
           </div>
 
-          <h1 className="font-playfair text-3xl font-bold md:text-4xl mb-8">Nouvel Approvisionnement de Matières Premières</h1>
+          <h1 className="font-playfair text-3xl font-bold md:text-4xl mb-8">Nouvel Approvisionnement de Ingrédients</h1>
 
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -462,11 +448,11 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                   </CardContent>
                 </Card>
 
-                {/* Ajouter des matières premières */}
+                {/* Ajouter des ingrédients */}
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle>Ajouter des matières premières</CardTitle>
+                      <CardTitle>Ajouter des ingrédients</CardTitle>
                       <Dialog open={isNewMatierePremiereDialogOpen} onOpenChange={setIsNewMatierePremiereDialogOpen}>
                         <DialogTrigger asChild>
                           <Button type="button" variant="outline" size="sm">
@@ -476,9 +462,9 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                           <DialogHeader>
-                            <DialogTitle>Ajouter une nouvelle matière première</DialogTitle>
+                            <DialogTitle>Ajouter une nouvelle ingrédient</DialogTitle>
                             <DialogDescription>
-                              Créez une nouvelle matière première pour l'ajouter à l'approvisionnement.
+                              Créez une nouvelle ingrédient pour l'ajouter à l'approvisionnement.
                             </DialogDescription>
                           </DialogHeader>
                           <div className="grid gap-4 py-4">
@@ -549,7 +535,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                   <CardContent className="space-y-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
                       <div className="flex-1 w-full">
-                        <Label htmlFor="matiere">Matière Première</Label>
+                        <Label htmlFor="matiere">Ingrédient</Label>
                         <SearchableSelect
                           options={matieres.map((m) => ({
                             value: m.id.toString(),
@@ -558,9 +544,9 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                           }))}
                           value={selectedMatierePremiereId}
                           onValueChange={setSelectedMatierePremiereId}
-                          placeholder="Sélectionner une matière première"
+                          placeholder="Sélectionner une ingrédient"
                           searchPlaceholder="Rechercher une matière..."
-                          emptyMessage="Aucune matière première trouvée"
+                          emptyMessage="Aucune ingrédient trouvée"
                           className="w-full mt-1"
                         />
                       </div>
@@ -609,9 +595,9 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                   <CardContent>
                     {lignesApprovisionnement.length === 0 ? (
                       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                        <h3 className="mt-2 text-lg font-medium">Aucune matière première ajoutée</h3>
+                        <h3 className="mt-2 text-lg font-medium">Aucune ingrédient ajoutée</h3>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Recherchez et ajoutez des matières premières à votre approvisionnement
+                          Recherchez et ajoutez des ingrédients à votre approvisionnement
                         </p>
                       </div>
                     ) : (
@@ -619,7 +605,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Matière Première</TableHead>
+                              <TableHead>Ingrédient</TableHead>
                               <TableHead className="text-center">Quantité</TableHead>
                               <TableHead className="text-right">Prix unitaire</TableHead>
                               <TableHead className="text-right">Total</TableHead>
@@ -628,7 +614,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                           </TableHeader>
                           <TableBody>
                             {lignesApprovisionnement.map((ligne) => {
-                              const matiere = matieres.find((m) => m.id === String(ligne.matierePremiereId))
+                              const matiere = matieres.find((m) => m.id.toString() === ligne.matierePremiereId.toString())
                               const prixUnitaire = ligne.montant / ligne.quantite
 
                               return (
@@ -741,9 +727,6 @@ export default function NouvelApprovisionnementMatierePremierePage() {
               </div>
             </div>
           </form>
-        </div>
-      </main>
-      <Footer />
     </div>
   )
 }

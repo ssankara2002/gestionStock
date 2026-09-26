@@ -15,7 +15,7 @@ export const getAllMatieresPremieres = (page = 1, limit = 10) => {
 }
 
 export const getMatierePremiereById = (id: string | number) => {
-  return apiClient.get<MatierePremiere>(`/matieres-premieres/${id}`).then((res) => res.data)
+  return apiClient.get<{ data: MatierePremiere }>(`/matieres-premieres/${id}`).then((res) => res.data.data)
 }
 
 export const createMatierePremiere = (data: Partial<MatierePremiere>) => {

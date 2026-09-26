@@ -169,13 +169,7 @@ export default function CommandeDetailPage({ params }: { params: Promise<{ id: s
 
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${type}-commande-${commande.id}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      if (a.parentNode === document.body) document.body.removeChild(a)
+      window.open(url, '_blank')
     } catch (error) {
       console.error("Erreur:", error)
       toast({ title: "Erreur", description: `Impossible de télécharger le ${type}`, variant: "destructive" })

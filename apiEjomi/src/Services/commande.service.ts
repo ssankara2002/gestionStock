@@ -100,6 +100,11 @@ const createCommande = async (data: CommandeCreateInput) => {
             coutRevient: 0,
           },
         });
+        // Décrémenter le stock de plats (sans bloquer si stock insuffisant — vente possible sur stock frigo)
+        await tx.plat.update({
+          where: { id: ligne.platId },
+          data: { stockPlat: { decrement: ligne.quantite } },
+        });
         continue;
       }
       const stockBoutique = await tx.stockBoutique.findUnique({
@@ -231,12 +236,18 @@ const updateCommande = async (id: number, data: CommandeCreateInput) => {
       throw new Error('Commande introuvable pour la mise à jour.');
     }
 
-    // 2. Restaurer le stock boutique des anciennes lignes
+    // 2. Restaurer le stock boutique et stockPlat des anciennes lignes
     for (const ligne of ancienneCommande.lignes) {
       if (ligne.stockBoutiqueId) {
         await tx.stockBoutique.update({
           where: { id: ligne.stockBoutiqueId },
           data: { quantite: { increment: ligne.quantiteCommande } },
+        });
+      }
+      if (ligne.platId) {
+        await tx.plat.update({
+          where: { id: ligne.platId },
+          data: { stockPlat: { increment: ligne.quantiteCommande } },
         });
       }
     }
@@ -285,7 +296,7 @@ const updateCommande = async (id: number, data: CommandeCreateInput) => {
       },
     });
 
-    // 7. Créer les nouvelles lignes et décrémenter le stock boutique
+    // 7. Créer les nouvelles lignes et décrémenter le stock boutique / stockPlat
     for (const ligne of data.lignes) {
       if (ligne.platId) {
         const plat = await tx.plat.findFirst({ where: { id: ligne.platId, entrepriseId: data.entrepriseId } });
@@ -299,6 +310,10 @@ const updateCommande = async (id: number, data: CommandeCreateInput) => {
             montant: Math.max(0, ligne.prixUnitaire * ligne.quantite - ligne.reduction),
             coutRevient: 0,
           },
+        });
+        await tx.plat.update({
+          where: { id: ligne.platId },
+          data: { stockPlat: { decrement: ligne.quantite } },
         });
         continue;
       }
@@ -344,12 +359,18 @@ const deleteCommande = async (id: number) => {
 
     if (!commande) return null;
 
-    // Restaurer le stock boutique
+    // Restaurer le stock boutique et stockPlat
     for (const ligne of commande.lignes) {
       if (ligne.stockBoutiqueId) {
         await tx.stockBoutique.update({
           where: { id: ligne.stockBoutiqueId },
           data: { quantite: { increment: ligne.quantiteCommande } },
+        });
+      }
+      if (ligne.platId) {
+        await tx.plat.update({
+          where: { id: ligne.platId },
+          data: { stockPlat: { increment: ligne.quantiteCommande } },
         });
       }
     }

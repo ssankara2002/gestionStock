@@ -263,26 +263,24 @@ export default function NouvelleCommandePage() {
   const updateQuantite = (ligneId: string, quantite: number) => {
     if (quantite <= 0) return
 
-    // Trouver la ligne concernée
     const ligne = lignesCommande.find((l) => l.id === ligneId)
     if (!ligne) return
 
-    // Trouver le produit
-    const product = products.find((p) => p.id === ligne.produitId)
-    if (!product) return
-
-    // Vérifier le stock disponible
-    if (quantite > (product.stockBoutique?.quantite ?? 0)) {
-      toast({
-        title: "Stock insuffisant",
-        description: `Stock disponible pour "${product.libelle}": ${product.stockBoutique?.quantite ?? 0}`,
-        variant: "destructive",
-      })
-      return
+    // Vérification stock uniquement pour les produits (pas les plats)
+    if (ligne.produitId) {
+      const product = products.find((p) => p.id === ligne.produitId)
+      if (product && quantite > (product.stockBoutique?.quantite ?? 0)) {
+        toast({
+          title: "Stock insuffisant",
+          description: `Stock disponible pour "${product.libelle}": ${product.stockBoutique?.quantite ?? 0}`,
+          variant: "destructive",
+        })
+        return
+      }
     }
 
     setLignesCommande((prevLignes) =>
-      prevLignes.map((ligne) => (ligne.id === ligneId ? { ...ligne, quantite } : ligne)),
+      prevLignes.map((l) => (l.id === ligneId ? { ...l, quantite } : l)),
     )
   }
 

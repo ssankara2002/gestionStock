@@ -6,6 +6,6 @@ import { getRapportLots } from '../Controllers/lot.controller.js';
 const router = Router();
 
 router.use(authenticateToken);
-router.get('/rapport', requirePermission('approvisionnement.read'), getRapportLots);
+router.get('/rapport', requirePermission('lot_stock.read'), getRapportLots);
 
 export default router;

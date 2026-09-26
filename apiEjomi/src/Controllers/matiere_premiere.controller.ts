@@ -29,20 +29,23 @@ export const getMatierePremiereById = async (req: AuthenticatedRequest, res: Res
 
 export const createMatierePremiere = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { nom, categorie, description, quantiteStock, prixAchat } = req.body;
+    const { nom, categorie, description, quantiteStock, prixAchat, unite } = req.body;
 
-    if (!nom || quantiteStock === undefined) {
-      res.status(400).json({ success: false, message: 'Les champs nom et quantiteStock sont obligatoires' });
+    if (!nom) {
+      res.status(400).json({ success: false, message: 'Le champ nom est obligatoire' });
       return;
     }
 
-    const matiereData = {
+    const matiereData: any = {
       nom,
       categorie,
       description,
-      quantiteStock: parseInt(quantiteStock),
-      prixAchat: parseFloat(prixAchat || '0'),
+      quantiteStock: quantiteStock !== undefined ? parseFloat(quantiteStock) : 0,
+      unite: unite || 'unité',
+      prixAchat: prixAchat !== undefined ? parseFloat(prixAchat) : 0,
     };
+
+    if (req.user?.entrepriseId) matiereData.entrepriseId = req.user.entrepriseId;
 
     const matiere = await matierePremiereService.createMatierePremiere(matiereData);
 
@@ -57,14 +60,15 @@ export const createMatierePremiere = async (req: AuthenticatedRequest, res: Resp
 export const updateMatierePremiere = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nom, categorie, description, quantiteStock, prixAchat } = req.body;
+    const { nom, categorie, description, quantiteStock, prixAchat, unite } = req.body;
 
     const matiereData: any = {};
     if (nom) matiereData.nom = nom;
-    if (categorie) matiereData.categorie = categorie;
-    if (description) matiereData.description = description;
-    if (quantiteStock !== undefined) matiereData.quantiteStock = parseInt(quantiteStock);
+    if (categorie !== undefined) matiereData.categorie = categorie;
+    if (description !== undefined) matiereData.description = description;
+    if (quantiteStock !== undefined) matiereData.quantiteStock = parseFloat(quantiteStock);
     if (prixAchat !== undefined) matiereData.prixAchat = parseFloat(prixAchat);
+    if (unite) matiereData.unite = unite;
 
     const matiere = await matierePremiereService.updateMatierePremiere(parseInt(id), matiereData);
 

@@ -104,8 +104,7 @@ export const matierePremiereSchema = z.object({
     .max(1000, "La description ne doit pas dépasser 1000 caractères")
     .optional()
     .or(z.literal("")),
-  quantiteStock: z.coerce.number().min(0, "La quantité doit être positive ou nulle"),
-  prixAchat: z.coerce.number().min(0, "Le prix d'achat doit être positif ou nul"),
+  unite: z.string().min(1, "L'unité est requise"),
 })
 export type MatierePremiereFormValues = z.infer<typeof matierePremiereSchema>
 
@@ -210,8 +209,5 @@ export const approvisionnementMatiereSchema = z.object({
   fournisseurId: z.coerce
     .number({ invalid_type_error: "Le fournisseur est obligatoire" })
     .positive("Le fournisseur est obligatoire"),
-  employeId: z.coerce
-    .number({ invalid_type_error: "L'employé est obligatoire" })
-    .positive("L'employé est obligatoire"),
 })
 export type ApprovisionnementMatiereFormValues = z.infer<typeof approvisionnementMatiereSchema>

@@ -26,6 +26,7 @@ import {
   Building2,
   Layers,
   PieChart,
+  ChefHat,
 } from "lucide-react"
 
 import {
@@ -107,6 +108,12 @@ export function AppSidebar() {
       icon: <Utensils className="h-5 w-5" />,
       permissions: ["plat.read"],
     },
+    // {
+    //   href: "/plats/capacite",
+    //   label: "Capacité production",
+    //   icon: <ChefHat className="h-5 w-5" />,
+    //   permissions: ["plat.read"],
+    // },
     {
       href: "/magasinier/fournisseurs",
       label: "Fournisseurs",
@@ -143,24 +150,36 @@ export function AppSidebar() {
       icon: <ShoppingBag className="h-5 w-5" />,
       permissions: ["approvisionnement.read"],
     },
-    // {
-    //   href: "/magasinier/matieres-premieres/approvisionnements",
-    //   label: "Approvisionnements MP",
-    //   icon: <ClipboardList className="h-5 w-5" />,
-    //   permissions: ["approvisionnement_matiere_premiere.read"],
-    // },
-    // {
-    //   href: "/magasinier/matieres-premieres",
-    //   label: "Matières premières",
-    //   icon: <Box className="h-5 w-5" />,
-    //   permissions: ["matiere_premiere.read"],
-    // },
-    // {
-    //   href: "/magasinier/productions",
-    //   label: "Productions",
-    //   icon: <Factory className="h-5 w-5" />,
-    //   permissions: ["production.read"],
-    // },
+    {
+      href: "/magasinier/matieres-premieres",
+      label: "Ingrédients",
+      icon: <Box className="h-5 w-5" />,
+      permissions: ["matiere_premiere.read"],
+    },
+    {
+      href: "/magasinier/matieres-premieres/approvisionnements",
+      label: "Appro. Ingrédients",
+      icon: <ClipboardList className="h-5 w-5" />,
+      permissions: ["approvisionnement_matiere_premiere.read"],
+    },
+    {
+      href: "/magasinier/inventaire-ingredients",
+      label: "Inventaire Ingrédients",
+      icon: <PackageCheck className="h-5 w-5" />,
+      permissions: ["matiere_premiere.update"],
+    },
+    {
+      href: "/magasinier/productions",
+      label: "Préparations",
+      icon: <Factory className="h-5 w-5" />,
+      permissions: ["plat.read"],
+    },
+    {
+      href: "/magasinier/rapport-plats",
+      label: "Rapport coûts plats",
+      icon: <PieChart className="h-5 w-5" />,
+      permissions: ["plat.read"],
+    },
     {
       href: "/magasinier/transferts",
       label: "Transferts",
@@ -171,7 +190,7 @@ export function AppSidebar() {
       href: "/magasinier/rapport-lots",
       label: "Lots de stock",
       icon: <Layers className="h-5 w-5" />,
-      permissions: ["produit.read"],
+      permissions: ["lot_stock.read"],
     },
     {
       href: "/magasinier/inventaire",

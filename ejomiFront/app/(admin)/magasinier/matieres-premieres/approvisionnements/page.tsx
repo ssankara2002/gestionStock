@@ -97,9 +97,9 @@ export default function ApprovisionnementListPage() {
         <CardHeader>
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div>
-              <CardTitle>Approvisionnements de Matières Premières</CardTitle>
+              <CardTitle>Approvisionnements de Ingrédients</CardTitle>
               <CardDescription>
-                Historique des entrées en stock des matières premières.
+                Historique des entrées en stock des ingrédients.
               </CardDescription>
             </div>
             <PermissionGuard permission="approvisionnement_matiere_premiere.create">

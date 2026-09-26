@@ -25,7 +25,7 @@ export default function MatieresPremieres() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null)
   const { hasPermission } = usePermissions()
 
-  // Charger les matières premières
+  // Charger les ingrédients
   useEffect(() => {
     const loadMatieres = async () => {
       setLoading(true)
@@ -45,10 +45,10 @@ export default function MatieresPremieres() {
           hasPrev: response.currentPage > 1,
         })
       } catch (error: any) {
-        console.error('Erreur chargement matières premières:', error)
+        console.error('Erreur chargement ingrédients:', error)
         toast({
           title: "Erreur de chargement",
-          description: error.response?.data?.message || "Impossible de charger la liste des matières premières.",
+          description: error.response?.data?.message || "Impossible de charger la liste des ingrédients.",
           variant: "destructive",
         })
       } finally {
@@ -59,27 +59,27 @@ export default function MatieresPremieres() {
     loadMatieres()
   }, [toast, currentPage])
 
-  // Filtrer les matières premières
+  // Filtrer les ingrédients
   const filteredMatieres = matieres.filter((matiere) =>
     matiere.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (matiere.categorie && matiere.categorie.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  // Supprimer une matière première
+  // Supprimer une ingrédient
   const handleDelete = async (id: string) => {
-    if (!confirm("Voulez-vous vraiment supprimer cette matière première ?")) return
+    if (!confirm("Voulez-vous vraiment supprimer cette ingrédient ?")) return
 
     try {
       await matierePremiereService.deleteMatierePremiere(id)
       setMatieres(matieres.filter((m) => m.id !== id))
       toast({
         title: "Succès",
-        description: "Matière première supprimée avec succès",
+        description: "Ingrédient supprimée avec succès",
       })
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.message || "Impossible de supprimer la matière première",
+        description: error.response?.data?.message || "Impossible de supprimer la ingrédient",
         variant: "destructive",
       })
     }
@@ -108,7 +108,7 @@ export default function MatieresPremieres() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats?.total || 0}</div>
-                <p className="text-xs text-muted-foreground">Nombre total de types de matières premières</p>
+                <p className="text-xs text-muted-foreground">Nombre total de types de ingrédients</p>
               </CardContent>
             </Card>
             <Card>
@@ -136,16 +136,16 @@ export default function MatieresPremieres() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Matières Premières</CardTitle>
+                  <CardTitle>Ingrédients</CardTitle>
                   <CardDescription>
-                    Gérez les matières premières utilisées dans la production
+                    Gérez les ingrédients utilisées dans la production
                   </CardDescription>
                 </div>
                 <PermissionGuard permission="matiere_premiere.create">
                   <Button asChild>
                     <Link href="/magasinier/matieres-premieres/nouveau">
                       <Plus className="mr-2 h-4 w-4" />
-                      Nouvelle matière première
+                      Nouvelle ingrédient
                     </Link>
                   </Button>
                 </PermissionGuard>
@@ -157,7 +157,7 @@ export default function MatieresPremieres() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Rechercher une matière première..."
+                    placeholder="Rechercher une ingrédient..."
                     className="pl-8"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -169,7 +169,7 @@ export default function MatieresPremieres() {
                 <div className="text-center py-8">Chargement...</div>
               ) : filteredMatieres.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  Aucune matière première trouvée
+                  Aucune ingrédient trouvée
                 </div>
               ) : (
                 <div className="rounded-md border overflow-x-auto">
@@ -179,6 +179,7 @@ export default function MatieresPremieres() {
                         <TableHead>Nom</TableHead>
                         <TableHead>Catégorie</TableHead>
                         <TableHead className="text-right">Stock</TableHead>
+                        <TableHead>Unité</TableHead>
                         <TableHead className="text-center">Statut</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -193,6 +194,7 @@ export default function MatieresPremieres() {
                               {matiere.quantiteStock}
                             </span>
                           </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{(matiere as any).unite || "unité"}</TableCell>
                           <TableCell className="text-center">{getStockBadge(matiere.quantiteStock)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
