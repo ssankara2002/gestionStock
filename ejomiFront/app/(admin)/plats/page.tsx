@@ -13,7 +13,14 @@ import { PermissionGuard } from "@/components/permissions/PermissionGuard"
 import { usePermissions } from "@/hooks/usePermissions"
 import { platService } from "@/services"
 import { DataPagination, type PaginationInfo } from "@/components/shared/data-pagination"
-import type { Plat } from "@/types/plat"
+import type { Plat, CategoriePlat } from "@/types/plat"
+
+const CATEGORIES: { value: CategoriePlat | "TOUS"; label: string }[] = [
+  { value: "TOUS", label: "Tous" },
+  { value: "REPAS", label: "Repas" },
+  { value: "LIQUIDE", label: "Liquide" },
+  { value: "SNACK", label: "Snack" },
+]
 
 const imageUrl = (image?: string | null) => {
   if (!image) return "/placeholder.svg?height=80&width=80"
@@ -27,6 +34,7 @@ export default function PlatsPage() {
   const { hasPermission } = usePermissions()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
+  const [categorie, setCategorie] = useState<CategoriePlat | "TOUS">("TOUS")
   const [page, setPage] = useState(1)
   const itemsPerPage = 10
 
@@ -37,7 +45,8 @@ export default function PlatsPage() {
 
   const allPlats = data?.data ?? []
   const filteredPlats = allPlats.filter((plat: Plat) =>
-    `${plat.libelle} ${plat.description || ""}`.toLowerCase().includes(search.toLowerCase()),
+    `${plat.libelle} ${plat.description || ""}`.toLowerCase().includes(search.toLowerCase()) &&
+    (categorie === "TOUS" || plat.categorie === categorie)
   )
   const totalPages = Math.max(1, Math.ceil(filteredPlats.length / itemsPerPage))
   const safePage = Math.min(page, totalPages)
@@ -59,10 +68,6 @@ export default function PlatsPage() {
     },
     onError: (error: any) => toast({ title: "Erreur", description: error.response?.data?.message || "Suppression impossible", variant: "destructive" }),
   })
-
-  const filtered = plats.filter((plat: Plat) =>
-    `${plat.libelle} ${plat.description || ""}`.toLowerCase().includes(search.toLowerCase()),
-  )
 
   return (
     <div className="container py-8 space-y-6">
@@ -87,7 +92,27 @@ export default function PlatsPage() {
           <CardDescription>{data?.total ?? 0} plat(s) enregistré(s)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 max-w-sm"><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Rechercher un plat..." /></div>
+          <div className="mb-4 flex flex-col sm:flex-row gap-3">
+            <Input className="max-w-sm" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Rechercher un plat..." />
+            <div className="flex gap-2 flex-wrap">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => { setCategorie(cat.value); setPage(1) }}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    categorie === cat.value
+                      ? cat.value === "LIQUIDE" ? "bg-blue-600 text-white border-blue-600"
+                        : cat.value === "SNACK" ? "bg-yellow-500 text-white border-yellow-500"
+                        : cat.value === "REPAS" ? "bg-green-600 text-white border-green-600"
+                        : "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {isLoading ? <div className="py-12 text-center text-muted-foreground">Chargement...</div> : (
             <>
               <div className="rounded-md border overflow-x-auto">
