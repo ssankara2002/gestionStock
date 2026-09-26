@@ -30,7 +30,7 @@ const adresse = z
   .max(255, "L'adresse ne doit pas dépasser 255 caractères")
 
 // ─── Client ────────────────────────────────────────────────────────────────────
-export const clientSchema = z.object({ nom, prenom, email, tel, adresse })
+export const clientSchema = z.object({ nom, prenom, email, tel, adresse: z.string().max(255).optional().or(z.literal("")) })
 export type ClientFormValues = z.infer<typeof clientSchema>
 
 // ─── Fournisseur ───────────────────────────────────────────────────────────────
@@ -38,29 +38,24 @@ export const fournisseurSchema = z.object({ nom, prenom, email, tel, adresse })
 export type FournisseurFormValues = z.infer<typeof fournisseurSchema>
 
 // ─── Employé ───────────────────────────────────────────────────────────────────
-export const employeSchema = z
-  .object({
-    nom,
-    prenom,
-    email,
-    tel,
-    adresse,
-    password: z
-      .string()
-      .optional()
-      .refine((v) => !v || v.length >= 6, {
-        message: "Le mot de passe doit contenir au moins 6 caractères",
-      }),
-    roleId: z.string().optional(),
-    salaire: z.coerce
-      .number({ invalid_type_error: "Le salaire est obligatoire" })
-      .positive("Le salaire doit être supérieur à 0"),
-    dateEmbauche: z.string().min(1, "La date d'embauche est obligatoire"),
-  })
-  .refine((d) => (d.email && d.email !== "") || (d.tel && d.tel !== ""), {
-    message: "Un email ou un numéro de téléphone est requis",
-    path: ["tel"],
-  })
+export const employeSchema = z.object({
+  nom,
+  prenom,
+  email,
+  tel,
+  adresse: z.string().max(255).optional().or(z.literal("")),
+  password: z
+    .string()
+    .optional()
+    .refine((v) => !v || v.length >= 6, {
+      message: "Le mot de passe doit contenir au moins 6 caractères",
+    }),
+  roleId: z.string().optional(),
+  salaire: z.coerce
+    .number({ invalid_type_error: "Le salaire est obligatoire" })
+    .positive("Le salaire doit être supérieur à 0"),
+  dateEmbauche: z.string().min(1, "La date d'embauche est obligatoire"),
+})
 export type EmployeFormValues = z.infer<typeof employeSchema>
 
 // ─── Produit ───────────────────────────────────────────────────────────────────

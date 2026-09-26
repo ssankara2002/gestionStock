@@ -19,7 +19,9 @@ import { Footer } from "@/components/layout/footer"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/context/auth-provider"
 import { produitService, userService, platService } from "@/services"
+import apiClient from "@/services/api-client"
 import type { User } from "@/types/user"
+import type { Employe } from "@/types/employe"
 import type { CommandeCreateData, LigneCommandeInput } from "@/types/commande"
 import type { Plat } from "@/types/plat"
 import { ModePaiement } from "@/types/paiement"
@@ -50,10 +52,10 @@ export default function NouvelleCommandePage() {
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
-
   const [products, setProducts] = useState<Produit[]>([])
   const [plats, setPlats] = useState<Plat[]>([])
   const [clients, setClients] = useState<User[]>([])
+  const [serveurs, setServeurs] = useState<Employe[]>([])
   const [catalogueType, setCatalogueType] = useState<"PRODUIT" | "PLAT">("PRODUIT")
 
   // État local pour gérer les lignes de commande avant soumission
@@ -92,20 +94,6 @@ export default function NouvelleCommandePage() {
 
   const reductionGlobale = watch("reductionGlobale") ?? 0
 
-  // Mettre à jour le vendeurId lorsque l'utilisateur est chargé
-  useEffect(() => {
-    console.log("User from context:", user)
-    console.log("User employe:", user?.employe)
-    console.log("Employe ID:", user?.employe?.id)
-
-    if (user?.employe?.id) {
-      console.log("Setting vendeurId to:", user.employe.id)
-      setVendeurId(user.employe.id)
-    } else {
-      console.warn("No employe ID found for user")
-    }
-  }, [user])
-
   // État pour le nouveau client
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false)
   const [newClient, setNewClient] = useState({
@@ -116,23 +104,31 @@ export default function NouvelleCommandePage() {
     adresse: "",
   })
 
-  // Charger les produits et les clients
+  // Auto-sélectionner l'employé connecté comme vendeur
+  useEffect(() => {
+    if (user?.employe?.id) {
+      setVendeurId(user.employe.id)
+    }
+  }, [user])
+
+  // Charger les produits, clients et employés
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [productsRes, platsRes, usersRes] = await Promise.all([
+        const [productsRes, platsRes, usersRes, serveursRes] = await Promise.all([
           produitService.getAll(),
           platService.getAll(),
           userService.getAll(),
+          apiClient.get('/employes/public'),
         ])
-        // @ts-ignore - API retourne { success, data }
+        // @ts-ignore
         setProducts(productsRes.data.data || productsRes.data || [])
-        // @ts-ignore - API retourne { success, data }
+        // @ts-ignore
         const platsData = platsRes.data.data?.data || platsRes.data.data || platsRes.data || []
         setPlats(platsData)
-        // Filtrer pour ne garder que les clients
         const allClients = usersRes.data.data.filter((u: User) => u.role?.name === "CLIENT" || !u.role)
         setClients(allClients)
+        setServeurs(serveursRes.data.data || [])
       } catch (error) {
         toast({
           title: "Erreur de chargement",
@@ -390,10 +386,10 @@ export default function NouvelleCommandePage() {
 
   // Ajouter un nouveau client
   const ajouterNouveauClient = async () => {
-    if (!newClient.nom || !newClient.adresse) {
+    if (!newClient.nom) {
       toast({
         title: "Erreur",
-        description: "Le nom et l'adresse du client sont requis.",
+        description: "Le nom du client est requis.",
         variant: "destructive",
       })
       return
@@ -471,20 +467,23 @@ export default function NouvelleCommandePage() {
                             control={control}
                             render={({ field }) => (
                               <AppSelect
-                                placeholder="Sélectionner un client"
+                                placeholder="Rechercher par nom ou téléphone..."
                                 value={
                                   field.value
-                                    ? {
-                                        value: field.value.toString(),
-                                        label: (() => {
-                                          const c = clients.find((c) => c.id === field.value)
-                                          return c ? [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom : ""
-                                        })(),
-                                      }
+                                    ? (() => {
+                                        const c = clients.find((c) => c.id === field.value)
+                                        if (!c) return null
+                                        const nom = [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom
+                                        return { value: field.value.toString(), label: c.tel ? `${nom} — ${c.tel}` : nom }
+                                      })()
                                     : null
                                 }
                                 onChange={(opt: any) => field.onChange(opt ? Number.parseInt(opt.value) : undefined)}
-                                options={clients.map((c) => ({ value: c.id.toString(), label: [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom }))}
+                                options={clients.map((c) => {
+                                  const nom = [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom
+                                  const label = c.tel ? `${nom} — ${c.tel}` : nom
+                                  return { value: c.id.toString(), label }
+                                })}
                               />
                             )}
                           />
@@ -581,14 +580,14 @@ export default function NouvelleCommandePage() {
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                   <Label htmlFor="adresse" className="text-right">
-                                    Adresse <span className="text-red-500">*</span>
+                                    Adresse
                                   </Label>
                                   <Input
                                     id="adresse"
                                     value={newClient.adresse}
                                     onChange={(e) => setNewClient({ ...newClient, adresse: e.target.value })}
                                     className="col-span-3"
-                                    required
+                                    placeholder="Optionnel"
                                   />
                                 </div>
                               </div>
@@ -621,6 +620,27 @@ export default function NouvelleCommandePage() {
                         {errors.reductionGlobale && (
                           <p className="text-sm text-red-500 mt-1">{errors.reductionGlobale.message}</p>
                         )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Vendeur</Label>
+                        <AppSelect
+                          placeholder="Sélectionner un vendeur..."
+                          value={
+                            vendeurId
+                              ? (() => {
+                                  const s = serveurs.find((e) => e.id === vendeurId)
+                                  if (!s) return null
+                                  const nom = [s.user?.prenom, s.user?.nom].filter(Boolean).join(" ") || s.user?.nom || ""
+                                  return { value: s.id.toString(), label: nom }
+                                })()
+                              : null
+                          }
+                          onChange={(opt: any) => setVendeurId(opt ? Number.parseInt(opt.value) : undefined)}
+                          options={serveurs.map((e) => {
+                            const nom = [e.user?.prenom, e.user?.nom].filter(Boolean).join(" ") || e.user?.nom || ""
+                            return { value: e.id.toString(), label: nom }
+                          })}
+                        />
                       </div>
                     </div>
                   </CardContent>

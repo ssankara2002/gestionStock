@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
+
 import { Edit, Plus, Search, Eye, Trash2, X } from "lucide-react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -174,14 +174,7 @@ export default function WarehouseProductsPage() {
                           return (
                             <TableRow key={product.id}>
                               <TableCell>
-                                <div className="w-16 h-16 relative">
-                                  <Image
-                                    src={imageUrl}
-                                    alt={product.libelle}
-                                    fill
-                                    className="object-contain rounded"
-                                  />
-                                </div>
+                                <img src={imageUrl} alt={product.libelle} className="w-16 h-16 object-contain rounded" />
                               </TableCell>
                               <TableCell className="font-medium">{product.libelle}</TableCell>
                               <TableCell className="max-w-xs">

@@ -92,12 +92,23 @@ export default function PlatsPage() {
             <>
               <div className="rounded-md border overflow-x-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Image</TableHead><TableHead>Plat</TableHead><TableHead>Description</TableHead><TableHead>Prix de vente</TableHead><TableHead className="text-right">Stock disponible</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Image</TableHead><TableHead>Plat</TableHead><TableHead>Catégorie</TableHead><TableHead>Description</TableHead><TableHead>Prix de vente</TableHead><TableHead className="text-right">Stock disponible</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {plats.length === 0 ? <TableRow><TableCell colSpan={6} className="h-24 text-center">Aucun plat trouvé.</TableCell></TableRow> : plats.map((plat: Plat) => (
                       <TableRow key={plat.id}>
                         <TableCell><img src={imageUrl(plat.image)} alt={plat.libelle} className="h-14 w-14 rounded object-cover" /></TableCell>
                         <TableCell className="font-medium">{plat.libelle}</TableCell>
+                        <TableCell>
+                          {plat.categorie ? (
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              plat.categorie === 'LIQUIDE' ? 'bg-blue-100 text-blue-700' :
+                              plat.categorie === 'SNACK' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {plat.categorie === 'LIQUIDE' ? 'Liquide' : plat.categorie === 'SNACK' ? 'Snack' : 'Repas'}
+                            </span>
+                          ) : <span className="text-muted-foreground text-sm">-</span>}
+                        </TableCell>
                         <TableCell className="max-w-xs text-muted-foreground">{plat.description || "-"}</TableCell>
                         <TableCell>{plat.prixVenteUnitaire} FCFA</TableCell>
                         <TableCell className="text-right">

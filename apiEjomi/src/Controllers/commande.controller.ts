@@ -37,9 +37,8 @@ export const createCommande = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Assigner le vendeurId et l'entrepriseId à partir de l'utilisateur authentifié
-  const entrepriseId = req.user?.entrepriseId;
-  const finalCommandeData = { ...commandeData, vendeurId: employe.id, entrepriseId };
+    const entrepriseId = req.user?.entrepriseId;
+  const finalCommandeData = { ...commandeData, vendeurId: commandeData.vendeurId ?? employe.id, entrepriseId };
   // Assurer que montantPaye et modePaiement (si fournis) sont passés au service
   if (commandeData.montantPaye) finalCommandeData.montantPaye = Number(commandeData.montantPaye);
   if (commandeData.modePaiement) finalCommandeData.modePaiement = commandeData.modePaiement;

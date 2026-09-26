@@ -138,29 +138,25 @@ export default function ModifierClientPage({ params }: { params: Promise<{ id: s
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prenom">Prénom <span className="text-red-500">*</span></Label>
+                <Label htmlFor="prenom">Prénom <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
                 <Input id="prenom" placeholder="Prénom du client" {...register("prenom")} />
                 {errors.prenom && <p className="text-sm text-red-500 mt-1">{errors.prenom.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">
-                  Email <span className="text-muted-foreground text-xs">(requis si pas de téléphone)</span>
-                </Label>
+                <Label htmlFor="email">Email <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
                 <Input id="email" type="email" placeholder="email@example.com" {...register("email")} />
                 {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tel">
-                  Téléphone <span className="text-muted-foreground text-xs">(requis si pas d'email)</span>
-                </Label>
+                <Label htmlFor="tel">Téléphone <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
                 <Input id="tel" placeholder="Ex: +226 70 00 00 00" {...register("tel")} />
                 {errors.tel && <p className="text-sm text-red-500 mt-1">{errors.tel.message}</p>}
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="adresse">Adresse <span className="text-red-500">*</span></Label>
+                <Label htmlFor="adresse">Adresse <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
                 <Textarea id="adresse" placeholder="Adresse complète" rows={3} {...register("adresse")} />
                 {errors.adresse && <p className="text-sm text-red-500 mt-1">{errors.adresse.message}</p>}
               </div>

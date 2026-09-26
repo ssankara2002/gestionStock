@@ -2,10 +2,11 @@ import apiClient from "./api-client"
 import type { Employe, EmployeCreateData, EmployeUpdateData, EmployeWithUserCreateData, EmployeWithUserUpdateData, ApiResponse } from "../types"
 
 export const employesService = {
-  getAll: (page?: number, limit?: number) => {
+  getAll: (page?: number, limit?: number, role?: string) => {
     const params = new URLSearchParams()
     if (page) params.append('page', page.toString())
     if (limit) params.append('limit', limit.toString())
+    if (role) params.append('role', role)
     const query = params.toString() ? `?${params.toString()}` : ''
     return apiClient.get<any>(`/employes${query}`)
   },
