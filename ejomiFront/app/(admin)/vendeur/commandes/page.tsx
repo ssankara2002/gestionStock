@@ -124,7 +124,7 @@ export default function CommandesPage() {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Client</TableHead>
-                  <TableHead>Vendeur</TableHead>
+                  <TableHead className="hidden md:table-cell">Vendeur</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -145,16 +145,22 @@ export default function CommandesPage() {
                 ) : (
                   paginatedCommandes.map((commande) => (
                     <TableRow key={commande.id}>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {format(new Date(commande.dateCommande), "dd MMM yyyy", { locale: fr })}
                       </TableCell>
                       <TableCell>
-                        {commande.client ? `${commande.client.prenom} ${commande.client.nom}` : "Client inconnu"}
+                        <span className="text-xs text-muted-foreground md:hidden">Client : </span>
+                        <span className="font-medium md:font-normal">
+                          {commande.client ? `${commande.client.prenom} ${commande.client.nom}` : "Client inconnu"}
+                        </span>
+                        <div className="mt-1 text-xs text-muted-foreground md:hidden">
+                          Vendeur : {commande.vendeur?.user?.prenom} {commande.vendeur?.user?.nom || "Vendeur inconnu"}
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {commande.vendeur?.user?.prenom} {commande.vendeur?.user?.nom || "Vendeur inconnu"}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="text-right font-medium whitespace-nowrap">
                         {commande.montant.toFixed(2)} FR CFA
                       </TableCell>
                       <TableCell className="text-right">
