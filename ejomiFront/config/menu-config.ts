@@ -86,13 +86,13 @@ export const MENU_ITEMS: MenuItem[] = [
     href: "/vendeur/commandes",
     label: "Commandes",
     icon: ShoppingBag,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "VENDEUR", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "VENDEUR", "CAISSIER"],
   },
   {
     href: "/vendeur/clients",
     label: "Clients",
     icon: Users,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "VENDEUR", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "VENDEUR", "CAISSIER"],
   },
   {
     href: "/vendeur/livraisons",
@@ -106,37 +106,37 @@ export const MENU_ITEMS: MenuItem[] = [
     href: "/produits",
     label: "Produits",
     icon: Package,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "VENDEUR", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "VENDEUR", "CAISSIER"],
   },
   {
     href: "/plats",
     label: "Plats",
     icon: Utensils,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "GERANT", "VENDEUR", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "GERANT", "VENDEUR", "CAISSIER"],
   },
   {
     href: "/magasinier/fournisseurs",
     label: "Fournisseurs",
     icon: Truck,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER"],
   },
   {
     href: "/magasinier/approvisionnements",
     label: "Approvisionnements",
     icon: ShoppingBag,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER"],
   },
   {
     href: "/magasinier/matieres-premieres",
     label: "Matières premières",
     icon: Box,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER"],
   },
   {
     href: "/magasinier/matieres-premieres/approvisionnements",
     label: "Approvisionnements MP",
     icon: ClipboardList,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "CAISSIER"],
   },
   {
     href: "/magasinier/productions",
@@ -154,7 +154,7 @@ export const MENU_ITEMS: MenuItem[] = [
     href: "/magasinier/rapport-lots",
     label: "Rapport des lots",
     icon: BarChart3,
-    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "GERANT", "CAISSIER", "CAISSIERE"],
+    roles: ["ADMIN", "DIRECTEUR_GENERAL", "MAGASINIER", "GERANT", "CAISSIER"],
   },
 ]
 

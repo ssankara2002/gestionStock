@@ -91,7 +91,7 @@ Pour supprimer également le volume PostgreSQL :
 docker compose -f apiEjomi/docker-compose.yml down -v
 ```
 ```bash
-docker compose --env-file apiEjomi/dotenv -f apiEjomi/docker-compose.yml up -d --build
+docker compose --env-file apiEjomi/dotenv -f apiEjomi/docker-compose.yml up -d --build && docker restart maquis-nginx
 
   ```
 

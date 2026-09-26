@@ -124,10 +124,6 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'commande.read', 'commande.create', 'commande.update',
     'produit.read', 'plat.read', 'fournisseur.read', 'approvisionnement.read', 'user.read', 'client.read',
   ],
-  CAISSIERE: [
-    'commande.read', 'commande.create', 'commande.update',
-    'produit.read', 'plat.read', 'fournisseur.read', 'approvisionnement.read', 'user.read', 'client.read',
-  ],
 
   SECRETAIRE: [
     'user.read', 'user.update',

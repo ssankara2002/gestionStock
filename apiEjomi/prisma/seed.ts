@@ -141,7 +141,7 @@ async function assignRolePermissions(roles: any, allPerms: any[]) {
     },
   });
 
-  for (const role of [roles.CAISSIER, roles.CAISSIERE]) {
+  for (const role of [roles.CAISSIER]) {
     if (!role) continue;
     await prisma.role.update({
       where: { id: role.id },
@@ -215,7 +215,7 @@ async function seedEntrepriseComplete(config: {
   console.log(`  🏢 ${entreprise.nom}`);
 
   // 2. Rôles
-  const roleNames = ['ADMIN', 'DIRECTEUR_GENERAL', 'GERANT', 'VENDEUR', 'MAGASINIER', 'CAISSIER', 'CAISSIERE', 'SECRETAIRE', 'CLIENT'];
+  const roleNames = ['ADMIN', 'DIRECTEUR_GENERAL', 'GERANT', 'VENDEUR', 'MAGASINIER', 'CAISSIER', 'SECRETAIRE', 'CLIENT'];
   const rolesArr = await Promise.all(
     roleNames.map(n => upsertRole(n, n, entreprise.id))
   );
