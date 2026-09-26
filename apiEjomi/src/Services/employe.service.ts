@@ -19,8 +19,8 @@ interface EmployeWithUserCreateData {
   nom: string;
   prenom: string;
   email?: string;
-  adresse: string;
-  tel: string;
+  adresse?: string;
+  tel?: string;
   password?: string;
   roleId?: number;
   salaire: number;
@@ -40,8 +40,12 @@ interface EmployeWithUserUpdateData {
   dateEmbauche?: Date;
 }
 
-const getAllEmployes = async (entrepriseId?: number) => {
-  const where: any = entrepriseId ? { user: { entrepriseId } } : {};
+const getAllEmployes = async (entrepriseId?: number, roleName?: string) => {
+  const where: any = {};
+  if (entrepriseId) where.user = { entrepriseId };
+  if (roleName) {
+    where.user = { ...(where.user || {}), role: { name: roleName.toUpperCase() } };
+  }
   return await prisma.employe.findMany({
     where,
     include: {
@@ -160,10 +164,10 @@ const createEmployeWithUser = async (data: EmployeWithUserCreateData) => {
     const user = await tx.user.create({
       data: {
         nom: data.nom,
-        prenom: data.prenom,
-        email: data.email,
-        adresse: data.adresse,
-        tel: data.tel,
+        prenom: data.prenom || undefined,
+        email: data.email || null,
+        adresse: data.adresse || '',
+        tel: data.tel || null,
         password: hashedPassword,
         roleId: data.roleId,
         entrepriseId: data.entrepriseId,
@@ -225,9 +229,9 @@ const updateEmployeWithUser = async (id: number, data: EmployeWithUserUpdateData
     const userData: any = {};
     if (data.nom) userData.nom = data.nom;
     if (data.prenom) userData.prenom = data.prenom;
-    if (data.email !== undefined) userData.email = data.email;
+    if (data.email !== undefined) userData.email = data.email || null;
     if (data.adresse) userData.adresse = data.adresse;
-    if (data.tel) userData.tel = data.tel;
+    if (data.tel !== undefined) userData.tel = data.tel || null;
     // Hacher le nouveau mot de passe s'il est fourni
     if (data.password && data.password.length > 0) {
       userData.password = await bcrypt.hash(data.password, 10);

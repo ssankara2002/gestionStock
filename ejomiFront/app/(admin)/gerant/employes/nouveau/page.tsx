@@ -76,7 +76,7 @@ export default function NouvelEmployePage() {
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de l'ajout de l'employé",
+        description: error.response?.data?.message || error.message || "Une erreur est survenue lors de l'ajout de l'employé",
         variant: "destructive",
       })
     } finally {
@@ -125,7 +125,7 @@ export default function NouvelEmployePage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="email">
-                          Email <span className="text-muted-foreground text-xs">(requis si pas de téléphone)</span>
+                          Email <span className="text-muted-foreground text-xs">(optionnel)</span>
                         </Label>
                         <Input id="email" type="email" placeholder="email@exemple.com" {...register("email")} />
                         {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
@@ -133,14 +133,14 @@ export default function NouvelEmployePage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="tel">
-                          Téléphone <span className="text-muted-foreground text-xs">(requis si pas d'email)</span>
+                          Téléphone <span className="text-muted-foreground text-xs">(optionnel)</span>
                         </Label>
                         <Input id="tel" placeholder="Ex: +226 70 00 00 00" {...register("tel")} />
                         {errors.tel && <p className="text-sm text-red-500 mt-1">{errors.tel.message}</p>}
                       </div>
 
                       <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="adresse">Adresse <span className="text-red-500">*</span></Label>
+                        <Label htmlFor="adresse">Adresse <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
                         <Input id="adresse" placeholder="Adresse complète" {...register("adresse")} />
                         {errors.adresse && <p className="text-sm text-red-500 mt-1">{errors.adresse.message}</p>}
                       </div>

@@ -2,7 +2,6 @@
 
 import { use, useState, useEffect } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { ArrowLeft, Edit, Trash2, Package, ShoppingBag, AlertTriangle, TrendingUp, Calendar } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
@@ -69,7 +68,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:3000"
+  const baseUrl = process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:3000"
   const imageUrl = product.image
     ? (product.image.startsWith("http") ? product.image : `${baseUrl}/uploads/${product.image}`)
     : "/placeholder.svg?height=400&width=400"
@@ -142,8 +141,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="lg:col-span-1 space-y-6">
               <Card>
                 <CardContent className="p-0">
-                  <div className="relative aspect-square rounded-t-lg overflow-hidden bg-muted">
-                    <Image src={imageUrl} alt={product.libelle} fill className="object-cover" />
+                  <div className="aspect-square rounded-t-lg overflow-hidden bg-muted">
+                    <img src={imageUrl} alt={product.libelle} className="h-full w-full object-cover" />
                   </div>
                   <div className="p-4 space-y-1">
                     <p className="text-xs text-muted-foreground uppercase tracking-wide">Description</p>

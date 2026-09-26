@@ -6,9 +6,12 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
 const prisma = new PrismaClient();
 
-export const getEmployesPublic = async (_req: Request, res: Response): Promise<void> => {
+export const getEmployesPublic = async (req: Request, res: Response): Promise<void> => {
   try {
+    const entrepriseId = (req as any).user?.entrepriseId;
+    const where: any = entrepriseId ? { user: { entrepriseId } } : {};
     const employes = await prisma.employe.findMany({
+      where,
       select: {
         id: true,
         user: {
@@ -31,7 +34,8 @@ export const getEmployesPublic = async (_req: Request, res: Response): Promise<v
 export const getAllEmployes = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const entrepriseId = req.user?.entrepriseId;
-    const employes = await employeService.getAllEmployes(entrepriseId);
+    const role = req.query.role as string | undefined;
+    const employes = await employeService.getAllEmployes(entrepriseId, role);
     res.status(200).json({ success: true, data: employes });
   } catch (error: any) {
     console.error("Erreur dans getAllEmployes:", error.message);
@@ -156,15 +160,11 @@ export const createEmployeWithUser = async (req: AuthenticatedRequest, res: Resp
     const { nom, prenom, email, adresse, tel, password, roleId, salaire, dateEmbauche } = req.body;
 
     // Validation des champs obligatoires
-    if (!nom || !prenom || !adresse || !salaire || !dateEmbauche) {
+    if (!nom || !salaire || !dateEmbauche) {
       res.status(400).json({
         success: false,
-        message: 'Les champs nom, prénom, adresse, salaire et date d\'embauche sont obligatoires'
+        message: 'Les champs nom, salaire et date d\'embauche sont obligatoires'
       });
-      return;
-    }
-    if (!email && !tel) {
-      res.status(400).json({ success: false, message: 'Un email ou un numéro de téléphone est requis' });
       return;
     }
 

@@ -111,7 +111,7 @@ export default function NouveauClientPage() {
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="adresse">Adresse <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="adresse">Adresse <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
                     <Textarea id="adresse" placeholder="Adresse complète" rows={3} {...register("adresse")} />
                     {errors.adresse && <p className="text-sm text-red-500 mt-1">{errors.adresse.message}</p>}
                   </div>

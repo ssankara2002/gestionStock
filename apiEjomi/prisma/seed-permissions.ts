@@ -216,6 +216,15 @@ async function main() {
     },
   });
 
+  await prisma.role.upsert({
+    where: { name: 'SERVEUR' },
+    update: {},
+    create: {
+      name: 'SERVEUR',
+      description: 'Serveur en salle avec accès aux ventes',
+    },
+  });
+
   // Configurer les permissions pour SECRETAIRE
   const secretairePermissions = [
     // Ventes (Commandes, Clients, Paiements, Livraisons)
@@ -245,7 +254,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Rôles par défaut créés : ADMIN, GERANT, VENDEUR, MAGASINIER, SECRETAIRE');
+  console.log('✅ Rôles par défaut créés : ADMIN, GERANT, VENDEUR, MAGASINIER, SECRETAIRE, SERVEUR');
   console.log(`✅ ${secretairePermissionRecords.length} permissions assignées au rôle SECRETAIRE`);
 //hhhhhhhhhhhhhhhhhh
   console.log('\n🎉 Seeding terminé avec succès !');

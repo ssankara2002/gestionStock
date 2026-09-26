@@ -100,8 +100,8 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
   try {
     const { nom, prenom, email, tel, adresse, password } = req.body;
 
-    if (!nom || !adresse) {
-      res.status(400).json({ success: false, message: 'Les champs nom et adresse sont obligatoires' });
+    if (!nom) {
+      res.status(400).json({ success: false, message: 'Le champ nom est obligatoire' });
       return;
     }
 
@@ -116,7 +116,7 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
       prenom: prenom || '',
       email: email || null,
       tel: tel || null,
-      adresse,
+      adresse: adresse || '-',
       password: password || undefined,
       ...(clientRole ? { roleId: clientRole.id } : {}),
       entrepriseId: entrepriseId || undefined,

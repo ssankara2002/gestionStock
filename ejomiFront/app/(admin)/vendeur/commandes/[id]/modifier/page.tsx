@@ -16,8 +16,11 @@ import { AppSelect } from "@/components/ui/app-select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/context/auth-provider"
 import { produitService, userService, platService } from "@/services"
+import apiClient from "@/services/api-client"
 import type { User } from "@/types/user"
+import type { Employe } from "@/types/employe"
 import type { CommandeUpdateData, LigneCommandeInput } from "@/types/commande"
 import type { Plat } from "@/types/plat"
 import {
@@ -48,11 +51,14 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
   const unwrappedParams = use(params)
   const router = useRouter()
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<Produit[]>([])
   const [plats, setPlats] = useState<Plat[]>([])
   const [clients, setClients] = useState<User[]>([])
+  const [employes, setEmployes] = useState<Employe[]>([])
+  const [vendeurId, setVendeurId] = useState<number | undefined>(undefined)
   const [catalogueType, setCatalogueType] = useState<"PRODUIT" | "PLAT">("PRODUIT")
 
   const [lignesCommande, setLignesCommande] = useState<LigneCommandeLocal[]>([])
@@ -75,11 +81,12 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
     const loadInitialData = async () => {
       try {
         setLoading(true)
-        const [productsRes, platsRes, usersRes, commandeRes] = await Promise.all([
+        const [productsRes, platsRes, usersRes, commandeRes, employesRes] = await Promise.all([
           produitService.getAll(),
           platService.getAll(),
           userService.getAll(),
           commandesService.getById(unwrappedParams.id),
+          apiClient.get('/employes/public'),
         ])
 
         // @ts-ignore
@@ -90,10 +97,14 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
         // @ts-ignore
         const allClients = usersRes.data.data.filter((u: User) => u.role?.name === "CLIENT" || !u.role)
         setClients(allClients)
+        // @ts-ignore
+        setEmployes(employesRes.data.data || [])
 
         // @ts-ignore
         const commandeData = commandeRes.data.data || commandeRes.data
         if (!commandeData) { notFound(); return }
+
+        setVendeurId(commandeData.vendeurId ?? user?.employe?.id ?? undefined)
 
         setLignesCommande(
           commandeData.lignes.map((ligne: any) => ({
@@ -195,8 +206,8 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
   }
 
   const ajouterNouveauClient = async () => {
-    if (!newClient.nom || !newClient.adresse) {
-      toast({ title: "Erreur", description: "Le nom et l'adresse sont requis.", variant: "destructive" })
+    if (!newClient.nom) {
+      toast({ title: "Erreur", description: "Le nom est requis.", variant: "destructive" })
       return
     }
     try {
@@ -221,6 +232,7 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
       const commandeData: CommandeUpdateData = {
         dateCommande: new Date(data.dateCommande),
         clientId: data.clientId,
+        vendeurId,
         reduction: data.reductionGlobale,
         lignes: lignesCommande.map(({ id, ...ligne }) => ligne),
       }
@@ -273,10 +285,10 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
                             control={control}
                             render={({ field }) => (
                               <AppSelect
-                                placeholder="Sélectionner un client"
-                                value={field.value ? { value: field.value.toString(), label: (() => { const c = clients.find((c) => c.id === field.value); return c ? [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom : "" })() } : null}
+                                placeholder="Rechercher par nom ou téléphone..."
+                                value={field.value ? (() => { const c = clients.find((c) => c.id === field.value); if (!c) return null; const nom = [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom; return { value: field.value.toString(), label: c.tel ? `${nom} — ${c.tel}` : nom } })() : null}
                                 onChange={(opt: any) => field.onChange(opt ? parseInt(opt.value) : undefined)}
-                                options={clients.map((c) => ({ value: c.id.toString(), label: [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom }))}
+                                options={clients.map((c) => { const nom = [c.prenom, c.nom].filter(Boolean).join(" ") || c.nom; return { value: c.id.toString(), label: c.tel ? `${nom} — ${c.tel}` : nom } })}
                               />
                             )}
                           />
@@ -331,7 +343,7 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
                                   <Input id="email" type="email" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} className="col-span-3" />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <Label htmlFor="adresse" className="text-right">Adresse <span className="text-red-500">*</span></Label>
+                                  <Label htmlFor="adresse" className="text-right">Adresse</Label>
                                   <Input id="adresse" value={newClient.adresse} onChange={(e) => setNewClient({ ...newClient, adresse: e.target.value })} className="col-span-3" />
                                 </div>
                               </div>
@@ -350,6 +362,27 @@ export default function ModifierCommandePage({ params }: { params: Promise<{ id:
                         <Label htmlFor="reductionGlobale">Réduction globale (FCFA)</Label>
                         <Input id="reductionGlobale" type="number" min="0" {...register("reductionGlobale")} />
                         {errors.reductionGlobale && <p className="text-sm text-red-500 mt-1">{errors.reductionGlobale.message}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Vendeur</Label>
+                        <AppSelect
+                          placeholder="Sélectionner un vendeur..."
+                          value={
+                            vendeurId
+                              ? (() => {
+                                  const e = employes.find((e) => e.id === vendeurId)
+                                  if (!e) return null
+                                  const nom = [e.user?.prenom, e.user?.nom].filter(Boolean).join(" ") || e.user?.nom || ""
+                                  return { value: e.id.toString(), label: nom }
+                                })()
+                              : null
+                          }
+                          onChange={(opt: any) => setVendeurId(opt ? parseInt(opt.value) : undefined)}
+                          options={employes.map((e) => {
+                            const nom = [e.user?.prenom, e.user?.nom].filter(Boolean).join(" ") || e.user?.nom || ""
+                            return { value: e.id.toString(), label: nom }
+                          })}
+                        />
                       </div>
                     </div>
                   </CardContent>

@@ -48,7 +48,8 @@ interface MenuItem {
   icon: React.ReactNode
   permissions?: Permission[]
   requireAll?: boolean
-  roles?: string[] // restreindre à certains rôles
+  roles?: string[]
+  excludeRoles?: string[]
 }
 
 export function AppSidebar() {
@@ -125,6 +126,7 @@ export function AppSidebar() {
       label: "Employés",
       icon: <UserCog className="h-5 w-5" />,
       permissions: ["employe.read"],
+      excludeRoles: ["CAISSIER", "VENDEUR", "SERVEUR"],
     },
     {
       href: "/gerant/absences",
@@ -231,6 +233,11 @@ export function AppSidebar() {
     // Vérification par rôle strict (ex: SUPER_ADMIN uniquement)
     if (item.roles && item.roles.length > 0) {
       return userRole ? item.roles.includes(userRole) : false
+    }
+
+    // Exclure certains rôles
+    if (item.excludeRoles && userRole && item.excludeRoles.includes(userRole)) {
+      return false
     }
 
     // Si pas de permissions requises, l'item est visible
