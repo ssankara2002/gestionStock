@@ -10,6 +10,7 @@ import {
   getCommandeStatistics,
   generateRecuPdf,
   generateFacturePdf,
+  getClientCredit,
 } from '../Controllers/commande.controller.js';
 import authenticateToken from '../middlewares/authMiddleware.js';
 import { requireCommandePermissions } from '../middlewares/permissionMiddleware.js';
@@ -25,6 +26,7 @@ router.get('/statistics', requireCommandePermissions.statistics, getCommandeStat
 router.get('/recu', requireCommandePermissions.read, generateRecuPdf);
 router.get('/facture', requireCommandePermissions.read, generateFacturePdf);
 router.get('/client/:clientId', requireCommandePermissions.read, getCommandesByClient);
+router.get('/client/:clientId/credit', requireCommandePermissions.read, getClientCredit);
 router.get('/vendeur/:vendeurId', requireCommandePermissions.read, getCommandesByVendeur);
 router.get('/:id', requireCommandePermissions.read, getCommandeById);
 

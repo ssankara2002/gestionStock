@@ -12,4 +12,6 @@ export const platService = {
   create: (data: FormData) => apiClient.post<{ success: boolean; data: Plat }>("/plats", data),
   update: (id: string, data: FormData) => apiClient.put<{ success: boolean; data: Plat }>(`/plats/${id}`, data),
   delete: (id: string) => apiClient.delete(`/plats/${id}`),
+  exportPdf: () => apiClient.get("/plats/export?format=pdf", { responseType: "blob" }),
+  exportWord: () => apiClient.get("/plats/export?format=word", { responseType: "blob" }),
 }

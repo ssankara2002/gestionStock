@@ -34,6 +34,7 @@ interface CommandeCreateInput {
   lignes: LigneCommandeInput[];
   montantPaye?: number;
   modePaiement?: string;
+  creditUtilise?: number;
 }
 
 const createCommande = async (data: CommandeCreateInput) => {
@@ -160,7 +161,34 @@ const createCommande = async (data: CommandeCreateInput) => {
       });
     }
 
-    // 5. Créer le paiement initial si fourni
+    // 5. Appliquer le crédit client si demandé
+    const creditUtilise = Number(data.creditUtilise || 0);
+    if (creditUtilise > 0) {
+      const client = await tx.user.findUnique({ where: { id: data.clientId }, select: { creditClient: true } });
+      const creditDispo = Number(client?.creditClient || 0);
+      if (creditUtilise > creditDispo) {
+        throw new Error(`Crédit insuffisant. Disponible: ${creditDispo} FCFA, Demandé: ${creditUtilise} FCFA`);
+      }
+      if (creditUtilise > montantFinal) {
+        throw new Error(`Le crédit utilisé (${creditUtilise} FCFA) ne peut pas dépasser le total de la commande (${montantFinal} FCFA)`);
+      }
+      // Déduire du creditClient
+      await tx.user.update({
+        where: { id: data.clientId },
+        data: { creditClient: { decrement: creditUtilise } },
+      });
+      // Enregistrer comme paiement de type CREDIT
+      await tx.paiement.create({
+        data: {
+          commandeId: commande.id,
+          montant: creditUtilise,
+          modePaiement: 'AUTRE' as any,
+          statut: 'REUSSI' as any,
+        },
+      });
+    }
+
+    // 6. Créer le paiement en espèces/autre si fourni
     const montantPaye = Number(data.montantPaye || 0);
     const modePaiement = data.modePaiement || 'ESPECES';
     if (montantPaye > 0) {
@@ -169,7 +197,7 @@ const createCommande = async (data: CommandeCreateInput) => {
           commandeId: commande.id,
           montant: montantPaye,
           modePaiement: modePaiement as any,
-          statut: 'REUSSI',
+          statut: 'REUSSI' as any,
         },
       });
     }

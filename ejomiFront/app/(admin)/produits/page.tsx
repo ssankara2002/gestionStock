@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 
-import { Edit, Plus, Search, Eye, Trash2, X } from "lucide-react"
+import { Edit, Plus, Search, Eye, Trash2, X, FileText, FileDown } from "lucide-react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,15 @@ import type { Produit } from "@/types/produit"
 import { produitService } from "@/services"
 import { DataPagination } from "@/components/shared/data-pagination"
 
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function WarehouseProductsPage() {
   const { toast } = useToast()
   const { hasPermission } = usePermissions()
@@ -35,7 +44,22 @@ export default function WarehouseProductsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [productToDelete, setProductToDelete] = useState<number | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [exporting, setExporting] = useState<"pdf" | "word" | null>(null)
   const itemsPerPage = 5
+
+  const handleExport = async (format: "pdf" | "word") => {
+    try {
+      setExporting(format)
+      const res = format === "pdf" ? await produitService.exportPdf() : await produitService.exportWord()
+      const ext = format === "pdf" ? "pdf" : "docx"
+      downloadBlob(res.data as Blob, `produits.${ext}`)
+      toast({ title: "Export réussi", description: `Liste des produits exportée en ${format.toUpperCase()}.` })
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'exporter.", variant: "destructive" })
+    } finally {
+      setExporting(null)
+    }
+  }
 
   // Use React Query for caching
   const { data: produits = [], isLoading: loading } = useQuery({
@@ -101,14 +125,24 @@ export default function WarehouseProductsPage() {
         <div className="container py-8">
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Gestion des Produits</h1>
-            <PermissionGuard permission="produit.create">
-              <Button asChild className="btn-gold">
-                <Link href="/produits/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Ajouter un produit
-                </Link>
-              </Button>
-            </PermissionGuard>
+            <div className="flex gap-2 flex-wrap">
+              <PermissionGuard permission="produit.export">
+                <Button variant="outline" onClick={() => handleExport("pdf")} disabled={exporting === "pdf"}>
+                  <FileText className="mr-2 h-4 w-4" />{exporting === "pdf" ? "Export..." : "PDF"}
+                </Button>
+                <Button variant="outline" onClick={() => handleExport("word")} disabled={exporting === "word"}>
+                  <FileDown className="mr-2 h-4 w-4" />{exporting === "word" ? "Export..." : "Word"}
+                </Button>
+              </PermissionGuard>
+              <PermissionGuard permission="produit.create">
+                <Button asChild className="btn-gold">
+                  <Link href="/produits/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajouter un produit
+                  </Link>
+                </Button>
+              </PermissionGuard>
+            </div>
           </div>
 
           <Card className="mt-6">

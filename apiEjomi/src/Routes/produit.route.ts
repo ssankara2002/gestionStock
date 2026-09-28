@@ -14,12 +14,14 @@ import {
 import authenticateToken from '../middlewares/authMiddleware.js';
 import { requireProduitPermissions } from '../middlewares/permissionMiddleware.js';
 import upload from '../middlewares/upload.js';
+import { exportProduits } from '../Controllers/export.controller.js';
 
 const router = Router();
 
 // Route publique — lecture seule, entrepriseId via query param (?entrepriseId=1)
 router.get('/public', getAllProduits);
 
+router.get('/export', authenticateToken, requireProduitPermissions.read, exportProduits);
 router.get('/', authenticateToken, getAllProduits);
 router.get('/statistics', authenticateToken, requireProduitPermissions.statistics, getProduitStatistics);
 router.get('/peremption', authenticateToken, requireProduitPermissions.read, getProduitsProchesPeremption);

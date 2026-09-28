@@ -53,6 +53,7 @@ model Entreprise {
   transferts         TransfertStock[]
   sessionsInventaire SessionInventaire[]
   plats              Plat[]
+  avoirs             Avoir[]
 }
 
 // ─────────────────────────────────────────────
@@ -72,12 +73,14 @@ model User {
   resetPasswordExpires DateTime?
   roleId               Int?
   entrepriseId         Int?
+  creditClient         Float      @default(0)
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
   role                 Role?      @relation(fields: [roleId], references: [id])
   entreprise           Entreprise? @relation(fields: [entrepriseId], references: [id])
   employe              Employe?
   commandes            Commande[]
+  avoirs               Avoir[]
   entreprises          UserEntreprise[]
 
   @@unique([tel, entrepriseId])
@@ -136,6 +139,7 @@ model Employe {
   paiements             SalairePaiement[]
   approvisionnements    Approvisionnement[]
   commandes             Commande[]
+  avoirs                Avoir[]
   livraisons            Livraison[]
   productions           Production[]
   transferts            TransfertStock[]
@@ -199,6 +203,7 @@ model Produit {
   transferts              TransfertStock[]
   lignesApprovisionnement LigneApprovisionnement[] @relation("ProduitLignesAppro")
   lignesCommande          LigneCommande[]
+  lignesAvoir             LigneAvoir[]
   productions             Production[]
   historiquesInventaire   HistoriqueInventaire[]
   lots                    LotStock[]
@@ -221,6 +226,7 @@ model Plat {
 
   entreprise        Entreprise?   @relation(fields: [entrepriseId], references: [id])
   lignesCommande    LigneCommande[]
+  lignesAvoir       LigneAvoir[]
   recette           RecettePlat[]
   preparations      PreparationPlat[]
 
@@ -374,6 +380,7 @@ model Commande {
   paiements    Paiement[]
   livraisons   Livraison[]
   transactions Transaction[]
+  avoirs       Avoir[]
 
   @@index([lieu])
 }
@@ -394,6 +401,39 @@ model LigneCommande {
   stockBoutique    StockBoutique? @relation(fields: [stockBoutiqueId], references: [id])
 
   @@index([platId])
+}
+
+model Avoir {
+  id           Int         @id @default(autoincrement())
+  dateAvoir    DateTime    @default(now())
+  montant      Float
+  motif        String?
+  type         AvoirType   @default(CREDIT)
+  statut       AvoirStatut @default(EN_ATTENTE)
+  commandeId   Int
+  clientId     Int
+  vendeurId    Int?
+  entrepriseId Int?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  commande     Commande    @relation(fields: [commandeId], references: [id])
+  client       User        @relation(fields: [clientId], references: [id])
+  vendeur      Employe?    @relation(fields: [vendeurId], references: [id])
+  entreprise   Entreprise? @relation(fields: [entrepriseId], references: [id])
+  lignes       LigneAvoir[]
+}
+
+model LigneAvoir {
+  id          Int      @id @default(autoincrement())
+  avoirId     Int
+  produitId   Int?
+  platId      Int?
+  quantite    Int
+  prixUnitaire Float
+  montant     Float
+  avoir       Avoir    @relation(fields: [avoirId], references: [id])
+  produit     Produit? @relation(fields: [produitId], references: [id])
+  plat        Plat?    @relation(fields: [platId], references: [id])
 }
 
 model Paiement {
@@ -639,6 +679,17 @@ enum CategoriePlat {
   LIQUIDE
   SNACK
   REPAS
+}
+
+enum AvoirType {
+  REMBOURSEMENT
+  CREDIT
+}
+
+enum AvoirStatut {
+  EN_ATTENTE
+  VALIDE
+  ANNULE
 }
 
 

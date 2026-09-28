@@ -127,6 +127,21 @@ export const requireProduitPermissions = {
   statistics: requirePermission('produit.statistics')
 };
 
+export const requirePlatPermissions = {
+  read: requirePermission('plat.read'),
+  create: requirePermission('plat.create'),
+  update: requirePermission('plat.update'),
+  delete: requirePermission('plat.delete'),
+  export: requirePermission('plat.export')
+};
+
+export const requireAvoirPermissions = {
+  read: requirePermission('avoir.read'),
+  create: requirePermission('avoir.create'),
+  delete: requirePermission('avoir.delete'),
+  export: requirePermission('avoir.export')
+};
+
 export const requireCommandePermissions = {
   read: requirePermission('commande.read'),
   create: requirePermission('commande.create'),

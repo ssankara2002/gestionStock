@@ -30,6 +30,7 @@ import transfertRoutes from './transfert.route';
 import lotRoutes from './lot.route';
 import bilanRoutes from './bilan.route';
 import inventaireMatierePremiereRoutes from './inventaire_matiere_premiere.route';
+import avoirRoutes from './avoir.route';
 
 const router = Router();
 
@@ -65,6 +66,7 @@ router.use('/transferts', transfertRoutes);
 router.use('/lots', lotRoutes);
 router.use('/bilan', bilanRoutes);
 router.use('/inventaire-ingredients', inventaireMatierePremiereRoutes);
+router.use('/avoirs', avoirRoutes);
 
 // Health check route
 router.get('/health', (req, res) => {

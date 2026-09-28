@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Edit, Plus, Search, Trash2, Utensils, ChefHat, PlayCircle, Warehouse } from "lucide-react"
+import { Edit, Plus, Trash2, Utensils, Warehouse, FileText, FileDown } from "lucide-react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +29,15 @@ const imageUrl = (image?: string | null) => {
   return `${base}/uploads/${image}`
 }
 
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function PlatsPage() {
   const { toast } = useToast()
   const { hasPermission } = usePermissions()
@@ -36,7 +45,22 @@ export default function PlatsPage() {
   const [search, setSearch] = useState("")
   const [categorie, setCategorie] = useState<CategoriePlat | "TOUS">("TOUS")
   const [page, setPage] = useState(1)
+  const [exporting, setExporting] = useState<"pdf" | "word" | null>(null)
   const itemsPerPage = 10
+
+  const handleExport = async (format: "pdf" | "word") => {
+    try {
+      setExporting(format)
+      const res = format === "pdf" ? await platService.exportPdf() : await platService.exportWord()
+      const ext = format === "pdf" ? "pdf" : "docx"
+      downloadBlob(res.data as Blob, `plats.${ext}`)
+      toast({ title: "Export réussi", description: `Liste des plats exportée en ${format.toUpperCase()}.` })
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'exporter.", variant: "destructive" })
+    } finally {
+      setExporting(null)
+    }
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ["plats"],
@@ -76,10 +100,15 @@ export default function PlatsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2"><Utensils className="h-7 w-7" />Plats</h1>
           <p className="text-muted-foreground">Gérez les plats vendus. Le stock disponible reflète les portions prêtes à servir.</p>
         </div>
-        <div className="flex gap-2">
-          {/* <Button variant="outline" asChild>
-            <Link href="/plats/capacite"><ChefHat className="mr-2 h-4 w-4" />Capacité de production</Link>
-          </Button> */}
+        <div className="flex gap-2 flex-wrap">
+          <PermissionGuard permission="plat.export">
+            <Button variant="outline" onClick={() => handleExport("pdf")} disabled={exporting === "pdf"}>
+              <FileText className="mr-2 h-4 w-4" />{exporting === "pdf" ? "Export..." : "PDF"}
+            </Button>
+            <Button variant="outline" onClick={() => handleExport("word")} disabled={exporting === "word"}>
+              <FileDown className="mr-2 h-4 w-4" />{exporting === "word" ? "Export..." : "Word"}
+            </Button>
+          </PermissionGuard>
           <PermissionGuard permission="plat.create">
             <Button asChild><Link href="/plats/nouveau"><Plus className="mr-2 h-4 w-4" />Nouveau plat</Link></Button>
           </PermissionGuard>

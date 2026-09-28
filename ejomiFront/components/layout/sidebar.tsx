@@ -27,6 +27,7 @@ import {
   Layers,
   PieChart,
   ChefHat,
+  FileOutput,
 } from "lucide-react"
 
 import {
@@ -96,6 +97,12 @@ export function AppSidebar() {
       label: "Clients",
       icon: <Users className="h-5 w-5" />,
       permissions: ["user.read"],
+    },
+    {
+      href: "/vendeur/avoirs",
+      label: "Avoirs",
+      icon: <FileOutput className="h-5 w-5" />,
+      permissions: ["avoir.read"],
     },
     {
       href: "/produits",

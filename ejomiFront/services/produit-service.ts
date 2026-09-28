@@ -17,6 +17,8 @@ export const produitService = {
   },
 
   delete: (id: string) => apiClient.delete(`/produits/${id}`),
+  exportPdf: () => apiClient.get("/produits/export?format=pdf", { responseType: "blob" }),
+  exportWord: () => apiClient.get("/produits/export?format=word", { responseType: "blob" }),
 }
 
 export default produitService

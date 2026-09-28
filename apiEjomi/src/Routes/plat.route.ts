@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import upload from '../middlewares/upload.js';
 import authenticateToken from '../middlewares/authMiddleware.js';
-import { requirePermission } from '../middlewares/permissionMiddleware.js';
+import { requirePermission, requirePlatPermissions } from '../middlewares/permissionMiddleware.js';
 import { getAllPlats, getPlatById, createPlat, updatePlat, deletePlat } from '../Controllers/plat.controller.js';
+import { exportPlats } from '../Controllers/export.controller.js';
 import { getRecette, upsertIngredient, deleteIngredient, getCapacite, getCapaciteTousPlats } from '../Controllers/recette.controller.js';
 import { getRapportCoutsPlats } from '../Controllers/rapport_plats.controller.js';
 import { creerPreparation, getPreparationById, modifierPreparation, supprimerPreparation, getHistorique, getHistoriqueJour } from '../Controllers/preparation.controller.js';
@@ -10,6 +11,7 @@ import { creerPreparation, getPreparationById, modifierPreparation, supprimerPre
 const router = Router();
 
 // Routes statiques EN PREMIER (avant /:id)
+router.get('/export', authenticateToken, requirePlatPermissions.export, exportPlats);
 router.get('/rapport-couts', authenticateToken, requirePermission('plat.read'), getRapportCoutsPlats);
 router.get('/capacite', authenticateToken, requirePermission('plat.read'), getCapaciteTousPlats);
 router.get('/preparations/jour', authenticateToken, requirePermission('plat.read'), getHistoriqueJour);

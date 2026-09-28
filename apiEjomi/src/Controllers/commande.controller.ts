@@ -39,9 +39,10 @@ export const createCommande = async (req: AuthenticatedRequest, res: Response): 
 
     const entrepriseId = req.user?.entrepriseId;
   const finalCommandeData = { ...commandeData, vendeurId: commandeData.vendeurId ?? employe.id, entrepriseId };
-  // Assurer que montantPaye et modePaiement (si fournis) sont passés au service
+  // Assurer que montantPaye, modePaiement et creditUtilise (si fournis) sont passés au service
   if (commandeData.montantPaye) finalCommandeData.montantPaye = Number(commandeData.montantPaye);
   if (commandeData.modePaiement) finalCommandeData.modePaiement = commandeData.modePaiement;
+  if (commandeData.creditUtilise) finalCommandeData.creditUtilise = Number(commandeData.creditUtilise);
     const nouvelleCommande = await commandeService.createCommande(finalCommandeData);
 
     res.status(201).json({
@@ -238,6 +239,23 @@ export const getCommandesByClient = async (req: Request, res: Response): Promise
   } catch (error: any) {
     console.error(`Erreur lors de la récupération des commandes pour le client ${req.params.clientId}:`, error);
     res.status(500).json({ success: false, message: 'Erreur interne du serveur.', error: error.message });
+  }
+};
+
+export const getClientCredit = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { clientId } = req.params;
+    const client = await prisma.user.findUnique({
+      where: { id: parseInt(clientId) },
+      select: { id: true, nom: true, prenom: true, tel: true, creditClient: true },
+    });
+    if (!client) {
+      res.status(404).json({ success: false, message: 'Client introuvable.' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { clientId: client.id, nom: `${client.prenom} ${client.nom}`, tel: client.tel, creditDisponible: Number(client.creditClient) } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Erreur interne.' });
   }
 };
 
