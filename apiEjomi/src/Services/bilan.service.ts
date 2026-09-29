@@ -13,8 +13,16 @@ export interface BilanPeriode {
   };
   depenses: {
     totalApprovisionnements: number;
+    approProduits: number;
+    approIngredients: number;
     totalSalaires: number;
     total: number;
+  };
+  ingredients: {
+    coutConsomme: number;     // ingrédients utilisés dans les préparations de la période (au prix d'achat)
+    nbPreparations: number;
+    valeurStock: number;      // valeur actuelle du stock d'ingrédients
+    nbEnRupture: number;
   };
   beneficeNet: number;
   margePercent: number;
@@ -37,7 +45,7 @@ const getBilanPeriode = async (
     where: wDate,
     include: {
       paiements: { where: { statut: 'REUSSI' } },
-      lignes: { include: { produit: { select: { libelle: true } } } },
+      lignes: { include: { produit: { select: { libelle: true } }, plat: { select: { libelle: true } } } },
     },
   });
 
@@ -55,7 +63,7 @@ const getBilanPeriode = async (
     creances += Math.max(0, Number(cmd.montant) - paye);
 
     for (const ligne of cmd.lignes) {
-      const lib = ligne.produit?.libelle ?? 'Inconnu';
+      const lib = ligne.produit?.libelle ?? ligne.plat?.libelle ?? 'Inconnu';
       if (!produitsMap[lib]) produitsMap[lib] = { quantite: 0, montant: 0 };
       produitsMap[lib].quantite += ligne.quantiteCommande;
       produitsMap[lib].montant += Number(ligne.montant);
@@ -73,6 +81,34 @@ const getBilanPeriode = async (
     _sum: { montant: true },
   });
   const totalApprovisionnements = approAgg._sum.montant || 0;
+
+  // Répartition des achats : produits vs ingrédients (même table d'approvisionnement)
+  const wLignesAppro = { approvisionnement: wDateAppro };
+  const [approProduitsAgg, approIngredientsAgg] = await Promise.all([
+    prisma.ligneApprovisionnement.aggregate({ where: { ...wLignesAppro, matierePremiereId: null }, _sum: { montant: true } }),
+    prisma.ligneApprovisionnement.aggregate({ where: { ...wLignesAppro, matierePremiereId: { not: null } }, _sum: { montant: true } }),
+  ]);
+  const approProduits = approProduitsAgg._sum.montant || 0;
+  const approIngredients = approIngredientsAgg._sum.montant || 0;
+
+  // Ingrédients : coût de ce qui a été utilisé dans les préparations de la période + stock actuel
+  const preparations = await prisma.preparationPlat.findMany({
+    where: {
+      datePreparation: { gte: debut, lte: fin },
+      ...(entrepriseId ? { plat: { entrepriseId } } : {}),
+    },
+    select: { lignes: { select: { quantiteUtilisee: true, matierePremiere: { select: { prixAchat: true } } } } },
+  });
+  const coutConsomme = preparations.reduce(
+    (s, p) => s + p.lignes.reduce((t, l) => t + Number(l.quantiteUtilisee) * Number(l.matierePremiere?.prixAchat || 0), 0),
+    0,
+  );
+  const matieres = await prisma.matierePremiere.findMany({
+    where: w,
+    select: { quantiteStock: true, prixAchat: true },
+  });
+  const valeurStock = matieres.reduce((s, m) => s + Math.max(0, Number(m.quantiteStock)) * Number(m.prixAchat || 0), 0);
+  const nbEnRupture = matieres.filter(m => Number(m.quantiteStock) <= 0).length;
 
   // Salaires (filtre via employe.user.entrepriseId si nécessaire)
   let salaireWhere: any = wDateSalaire;
@@ -106,7 +142,13 @@ const getBilanPeriode = async (
   return {
     periode: { debut, fin },
     revenus: { totalVentes, totalPaiementsRecus, creances, nbCommandes, nbCommandesLivrees },
-    depenses: { totalApprovisionnements, totalSalaires, total: totalDepenses },
+    depenses: { totalApprovisionnements, approProduits, approIngredients, totalSalaires, total: totalDepenses },
+    ingredients: {
+      coutConsomme: Math.round(coutConsomme),
+      nbPreparations: preparations.length,
+      valeurStock: Math.round(valeurStock),
+      nbEnRupture,
+    },
     beneficeNet,
     margePercent,
     topProduits,

@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } f
 import { fr } from "date-fns/locale"
 import {
   TrendingUp, TrendingDown, Wallet, ShoppingCart, Package,
-  AlertTriangle, BarChart3, FileText, ArrowUpRight, ArrowDownRight,
+  AlertTriangle, BarChart3, FileText, ArrowUpRight, ArrowDownRight, Utensils,
 } from "lucide-react"
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { useQuery } from "@tanstack/react-query"
@@ -28,8 +28,16 @@ interface BilanData {
   }
   depenses: {
     totalApprovisionnements: number
+    approProduits?: number
+    approIngredients?: number
     totalSalaires: number
     total: number
+  }
+  ingredients?: {
+    coutConsomme: number
+    nbPreparations: number
+    valeurStock: number
+    nbEnRupture: number
   }
   beneficeNet: number
   margePercent: number
@@ -89,7 +97,8 @@ export default function BilanFinancierPage() {
     ? [
         { name: "Revenus", montant: data.revenus.totalVentes, fill: "#22c55e" },
         { name: "Encaissés", montant: data.revenus.totalPaiementsRecus, fill: "#d4af37" },
-        { name: "Appro.", montant: data.depenses.totalApprovisionnements, fill: "#ef4444" },
+        { name: "Appro. produits", montant: data.depenses.approProduits ?? data.depenses.totalApprovisionnements, fill: "#ef4444" },
+        { name: "Appro. ingrédients", montant: data.depenses.approIngredients ?? 0, fill: "#a855f7" },
         { name: "Salaires", montant: data.depenses.totalSalaires, fill: "#f97316" },
       ]
     : []
@@ -194,8 +203,10 @@ export default function BilanFinancierPage() {
                     <TrendingDown className="h-5 w-5 text-red-600" />
                   </div>
                 </div>
-                <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
-                  <span>Appro: <b>{data.depenses.totalApprovisionnements.toLocaleString()}</b></span>
+                <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <span>Produits: <b>{(data.depenses.approProduits ?? data.depenses.totalApprovisionnements).toLocaleString()}</b></span>
+                  <span>•</span>
+                  <span>Ingrédients: <b>{(data.depenses.approIngredients ?? 0).toLocaleString()}</b></span>
                   <span>•</span>
                   <span>Salaires: <b>{data.depenses.totalSalaires.toLocaleString()}</b></span>
                 </div>
@@ -307,6 +318,43 @@ export default function BilanFinancierPage() {
             </Card>
           </div>
 
+          {/* Ingrédients */}
+          {data.ingredients && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Utensils className="h-5 w-5 text-purple-600" />
+                  <CardTitle>Ingrédients</CardTitle>
+                </div>
+                <CardDescription>Achats, consommation dans les préparations et stock restant</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm text-muted-foreground">Achats d'ingrédients</p>
+                    <p className="text-xl font-bold mt-1">{(data.depenses.approIngredients ?? 0).toLocaleString()} FCFA</p>
+                    <p className="text-xs text-muted-foreground">sur la période</p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm text-muted-foreground">Coût des ingrédients utilisés</p>
+                    <p className="text-xl font-bold mt-1">{data.ingredients.coutConsomme.toLocaleString()} FCFA</p>
+                    <p className="text-xs text-muted-foreground">{data.ingredients.nbPreparations} préparation(s), au prix d'achat</p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm text-muted-foreground">Valeur du stock d'ingrédients</p>
+                    <p className="text-xl font-bold mt-1">{data.ingredients.valeurStock.toLocaleString()} FCFA</p>
+                    <p className="text-xs text-muted-foreground">aujourd'hui</p>
+                  </div>
+                  <div className={`rounded-lg border p-4 ${data.ingredients.nbEnRupture > 0 ? "border-red-300 bg-red-50" : ""}`}>
+                    <p className="text-sm text-muted-foreground">Ingrédients en rupture</p>
+                    <p className={`text-xl font-bold mt-1 ${data.ingredients.nbEnRupture > 0 ? "text-red-600" : ""}`}>{data.ingredients.nbEnRupture}</p>
+                    <p className="text-xs text-muted-foreground">stock à 0 ou moins</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Top produits + Transactions */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             {/* Top produits vendus */}
@@ -314,7 +362,7 @@ export default function BilanFinancierPage() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Package className="h-5 w-5 text-primary" />
-                  <CardTitle>Top 5 produits vendus</CardTitle>
+                  <CardTitle>Top 5 ventes (produits et plats)</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>

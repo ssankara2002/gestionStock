@@ -155,11 +155,47 @@ const getMatierePremiereStatistics = async (entrepriseId?: number) => {
     prisma.matierePremiere.groupBy({ by: ['categorie'], where: w, _count: { id: true }, _sum: { quantiteStock: true } }),
   ]);
 
+  // Tableau de bord : valeur du stock, ingrédients les plus bas, achats et consommation du mois
+  const debutMois = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const [matieres, achatsMois, preparationsMois] = await Promise.all([
+    prisma.matierePremiere.findMany({
+      where: w,
+      select: { id: true, nom: true, quantiteStock: true, unite: true, prixAchat: true },
+    }),
+    prisma.ligneApprovisionnement.aggregate({
+      where: {
+        matierePremiereId: { not: null },
+        approvisionnement: { dateApprovisionnement: { gte: debutMois }, ...(entrepriseId ? { entrepriseId } : {}) },
+      },
+      _sum: { montant: true },
+    }),
+    prisma.preparationPlat.findMany({
+      where: { datePreparation: { gte: debutMois }, ...(entrepriseId ? { plat: { entrepriseId } } : {}) },
+      select: { lignes: { select: { quantiteUtilisee: true, matierePremiere: { select: { prixAchat: true } } } } },
+    }),
+  ]);
+
+  const valeurStock = matieres.reduce((s, m) => s + Math.max(0, m.quantiteStock) * (m.prixAchat || 0), 0);
+  const coutConsommeMois = preparationsMois.reduce(
+    (s, p) => s + p.lignes.reduce((t, l) => t + l.quantiteUtilisee * (l.matierePremiere?.prixAchat || 0), 0),
+    0,
+  );
+  const plusBas = [...matieres]
+    .filter((m) => m.quantiteStock <= 10)
+    .sort((a, b) => a.quantiteStock - b.quantiteStock)
+    .slice(0, 5)
+    .map((m) => ({ id: m.id, nom: m.nom, quantiteStock: m.quantiteStock, unite: m.unite }));
+
   return {
     total,
     totalStock: totalStock._sum.quantiteStock || 0,
     lowStock,
     categories: categories.filter((c: any) => c.categorie),
+    valeurStock: Math.round(valeurStock),
+    enRupture: matieres.filter((m) => m.quantiteStock <= 0).length,
+    achatsMois: achatsMois._sum.montant || 0,
+    coutConsommeMois: Math.round(coutConsommeMois),
+    plusBas,
   };
 };
 

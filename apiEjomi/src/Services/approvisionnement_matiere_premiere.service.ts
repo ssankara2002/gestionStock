@@ -60,11 +60,14 @@ const create = async (data: ApprovisionnementMatierePremiereCreateData) => {
       include: { lignes: { include: { matierePremiere: true } } },
     });
 
-    // 4. Mettre à jour le stock des matières premières
+    // 4. Mettre à jour le stock et le dernier prix d'achat (sert au coût des ingrédients utilisés)
     for (const ligne of data.lignes) {
       await tx.matierePremiere.update({
         where: { id: ligne.matierePremiereId },
-        data: { quantiteStock: { increment: ligne.quantite } },
+        data: {
+          quantiteStock: { increment: ligne.quantite },
+          ...(ligne.quantite > 0 && ligne.montant > 0 ? { prixAchat: ligne.montant / ligne.quantite } : {}),
+        },
       });
     }
 
@@ -158,7 +161,10 @@ const update = async (id: number, data: ApprovisionnementMatierePremiereUpdateDa
       for (const ligne of data.lignes) {
         await tx.matierePremiere.update({
           where: { id: ligne.matierePremiereId },
-          data: { quantiteStock: { increment: ligne.quantite } },
+          data: {
+            quantiteStock: { increment: ligne.quantite },
+            ...(ligne.quantite > 0 && ligne.montant > 0 ? { prixAchat: ligne.montant / ligne.quantite } : {}),
+          },
         });
       }
     }
