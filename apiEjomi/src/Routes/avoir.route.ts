@@ -4,6 +4,9 @@ import {
   getAllAvoirs,
   getAvoirById,
   getAvoirsByCommande,
+  consommerMonnaie,
+  recupererGarde,
+  rembourserCredit,
   deleteAvoir,
   generateAvoirPdf,
 } from '../Controllers/avoir.controller.js';
@@ -20,6 +23,9 @@ router.get('/commande/:commandeId', requireAvoirPermissions.read, getAvoirsByCom
 router.get('/:id', requireAvoirPermissions.read, getAvoirById);
 
 router.post('/', requireAvoirPermissions.create, createAvoir);
+router.patch('/:id/rembourser', requireAvoirPermissions.create, rembourserCredit);
+router.patch('/:id/consommer', requireAvoirPermissions.create, consommerMonnaie);
+router.patch('/:id/recuperer', requireAvoirPermissions.create, recupererGarde);
 
 router.delete('/:id', requireAvoirPermissions.delete, deleteAvoir);
 

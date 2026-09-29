@@ -17,7 +17,7 @@ export interface PaginationResult<T> {
 
 export const getPaginationParams = (query: any): { skip: number; take: number; page: number; limit: number } => {
   const page = parseInt(query.page as string) || 1;
-  const limit = parseInt(query.limit as string) || 10;
+  const limit = parseInt(query.limit as string) || 10000;
   const skip = (page - 1) * limit;
   const take = limit;
 

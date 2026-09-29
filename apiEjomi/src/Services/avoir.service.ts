@@ -16,7 +16,7 @@ interface AvoirCreateInput {
   vendeurId?: number;
   entrepriseId?: number;
   motif?: string;
-  type: 'REMBOURSEMENT' | 'CREDIT';
+  type: 'REMBOURSEMENT' | 'CREDIT' | 'GARDE' | 'MONNAIE' | 'PRODUITS';
   lignes: LigneAvoirInput[];
 }
 
@@ -46,9 +46,12 @@ const createAvoir = async (data: AvoirCreateInput) => {
       },
     });
 
-    // Créer les lignes et restituer le stock
+    // Créer les lignes
+    // Pour GARDE : le stock ne remonte PAS (les produits sont réservés physiquement pour le client)
+    // Pour CREDIT/REMBOURSEMENT : le stock remonte
     for (const ligne of data.lignes) {
-      if (!ligne.produitId && !ligne.platId) throw new Error('Chaque ligne doit avoir un produit ou un plat.');
+      // MONNAIE : ligne fictive sans produit/plat — juste le montant
+      if (!ligne.produitId && !ligne.platId && data.type !== 'MONNAIE') throw new Error('Chaque ligne doit avoir un produit ou un plat.');
 
       await tx.ligneAvoir.create({
         data: {
@@ -61,6 +64,8 @@ const createAvoir = async (data: AvoirCreateInput) => {
         },
       });
 
+      if (data.type === 'GARDE' || data.type === 'PRODUITS' || data.type === 'MONNAIE') continue; // stock ne bouge pas
+
       // Restitution stock plat
       if (ligne.platId) {
         await tx.plat.update({
@@ -70,7 +75,7 @@ const createAvoir = async (data: AvoirCreateInput) => {
         continue;
       }
 
-      // Restitution stock boutique + lotStock FIFO inversé (dernier lot consommé d'abord)
+      // Restitution stock boutique + lotStock FIFO inversé
       const stockBoutique = await tx.stockBoutique.findUnique({ where: { produitId: ligne.produitId } });
       if (stockBoutique) {
         await tx.stockBoutique.update({
@@ -78,8 +83,6 @@ const createAvoir = async (data: AvoirCreateInput) => {
           data: { quantite: { increment: ligne.quantite } },
         });
       }
-
-      // Réincrémenter le lot le plus récent consommé (dernier FIFO)
       const lots = await tx.lotStock.findMany({
         where: { produitId: ligne.produitId },
         orderBy: { dateAppro: 'desc' },
@@ -93,19 +96,9 @@ const createAvoir = async (data: AvoirCreateInput) => {
       }
     }
 
-    // Appliquer selon le type
-    if (data.type === 'REMBOURSEMENT') {
-      // Paiement négatif pour sortie de caisse
-      await tx.paiement.create({
-        data: {
-          commandeId: data.commandeId,
-          montant: -montantTotal,
-          modePaiement: 'ESPECES' as any,
-          statut: 'REUSSI' as any,
-        },
-      });
-    } else {
-      // Crédit client
+    // CREDIT : créditer le compte client immédiatement
+    // REMBOURSEMENT/GARDE/PRODUITS/MONNAIE : rien ne bouge à la création — décision prise au retour du client
+    if (data.type === 'CREDIT') {
       await tx.user.update({
         where: { id: data.clientId },
         data: { creditClient: { increment: montantTotal } },
@@ -161,6 +154,74 @@ const getAvoirsByCommande = async (commandeId: number) => {
       lignes: { include: { produit: true, plat: true } },
     },
     orderBy: { createdAt: 'desc' },
+  });
+};
+
+const consommerMonnaie = async (id: number) => {
+  return prisma.$transaction(async (tx) => {
+    const avoir = await tx.avoir.findUnique({ where: { id } });
+    if (!avoir) throw new Error('Avoir introuvable.');
+    if (!['MONNAIE', 'CREDIT'].includes(avoir.type as string)) throw new Error('Seuls les avoirs de type MONNAIE peuvent être consommés.');
+    if (!['VALIDE'].includes(avoir.statut as string)) throw new Error('Seuls les avoirs validés peuvent être consommés.');
+
+    // Créditer le compte client — il consommera à la prochaine commande
+    await tx.user.update({
+      where: { id: avoir.clientId },
+      data: { creditClient: { increment: avoir.montant } },
+    });
+
+    return tx.avoir.update({
+      where: { id },
+      data: { statut: 'CONSOMME' as any, dateRemboursement: new Date() },
+    });
+  });
+};
+
+const recupererGarde = async (id: number) => {
+  return prisma.$transaction(async (tx) => {
+    const avoir = await tx.avoir.findUnique({ where: { id }, include: { lignes: true } });
+    if (!avoir) throw new Error('Avoir introuvable.');
+    if (!['GARDE', 'PRODUITS'].includes(avoir.type as string)) throw new Error('Cet avoir n\'est pas de type Produits gardés.');
+    if ((avoir.statut as string) === 'REMBOURSE') throw new Error('Ces produits ont déjà été récupérés.');
+    if (avoir.statut !== 'VALIDE') throw new Error('Seuls les avoirs validés peuvent être récupérés.');
+
+    // Marquer la date de récupération — statut REMBOURSE réutilisé comme "récupéré"
+    return tx.avoir.update({
+      where: { id },
+      data: { statut: 'REMBOURSE' as any, dateRemboursement: new Date() },
+    });
+  });
+};
+
+const rembourserCredit = async (id: number) => {
+  return prisma.$transaction(async (tx) => {
+    const avoir = await tx.avoir.findUnique({ where: { id } });
+    if (!avoir) throw new Error('Avoir introuvable.');
+    if (['REMBOURSE', 'CONSOMME'].includes(avoir.statut as string)) throw new Error('Cet avoir a déjà été traité.');
+    if (avoir.statut !== 'VALIDE') throw new Error('Seuls les avoirs validés peuvent être remboursés.');
+
+    // Si CREDIT : retirer le crédit du compte client (il prend l'argent en espèces au lieu de consommer)
+    if (['CREDIT'].includes(avoir.type as string)) {
+      await tx.user.update({
+        where: { id: avoir.clientId },
+        data: { creditClient: { decrement: avoir.montant } },
+      });
+    }
+
+    // Sortie de caisse dans les deux cas
+    await tx.paiement.create({
+      data: {
+        commandeId: avoir.commandeId,
+        montant: -avoir.montant,
+        modePaiement: 'ESPECES' as any,
+        statut: 'REUSSI' as any,
+      },
+    });
+
+    return tx.avoir.update({
+      where: { id },
+      data: { statut: 'REMBOURSE' as any, dateRemboursement: new Date() },
+    });
   });
 };
 
@@ -299,6 +360,9 @@ export default {
   getAllAvoirs,
   getAvoirById,
   getAvoirsByCommande,
+  consommerMonnaie,
+  recupererGarde,
+  rembourserCredit,
   deleteAvoir,
   generateAvoirPdf,
 };

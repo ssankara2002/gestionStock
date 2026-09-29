@@ -74,7 +74,21 @@ const createCommande = async (data: CommandeCreateInput) => {
     }, 0);
     const montantFinal = Math.max(0, montantTotalLignes - data.reduction);
 
-    // 3. Créer la commande (lieu BOUTIQUE par défaut)
+    // 3. Calculer le prochain numéro de reçu pour ce mois
+    const dateRef = new Date(data.dateCommande);
+    const debutMois = new Date(dateRef.getFullYear(), dateRef.getMonth(), 1);
+    const finMois = new Date(dateRef.getFullYear(), dateRef.getMonth() + 1, 1);
+    const derniere = await tx.commande.findFirst({
+      where: {
+        entrepriseId: data.entrepriseId,
+        dateCommande: { gte: debutMois, lt: finMois },
+      },
+      orderBy: { numeroRecu: 'desc' },
+      select: { numeroRecu: true },
+    });
+    const numeroRecu = (derniere?.numeroRecu ?? 0) + 1;
+
+    // 4. Créer la commande (lieu BOUTIQUE par défaut)
     const commande = await tx.commande.create({
       data: {
         clientId: data.clientId,
@@ -85,6 +99,7 @@ const createCommande = async (data: CommandeCreateInput) => {
         statut: 'EN_ATTENTE' as any,
         reduction: data.reduction,
         lieu: 'BOUTIQUE',
+        numeroRecu,
       },
     });
 
@@ -567,8 +582,10 @@ const generateRecuPdf = async (commandeId: number): Promise<Buffer | null> => {
       doc.fontSize(8).font('Helvetica').text('----------------------------------------', { align: 'center' });
       doc.moveDown(0.5);
 
-      doc.fontSize(9).font('Helvetica-Bold').text(`N° ${commande.id}`, { align: 'center' });
-      doc.fontSize(8).font('Helvetica').text(new Date(commande.dateCommande).toLocaleString('fr-FR'), { align: 'center' });
+      const numRecu = (commande as any).numeroRecu || commande.id;
+      const d = new Date(commande.dateCommande);
+      const moisAnnee = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      doc.fontSize(10).font('Helvetica-Bold').text(`Reçu N°${numRecu} du ${moisAnnee}`, { align: 'center' });
       doc.moveDown(0.5);
 
       doc.text('----------------------------------------', { align: 'center' });
@@ -689,8 +706,10 @@ const generateFacturePdf = async (commandeId: number): Promise<Buffer | null> =>
       doc.fontSize(8).text('----------------------------------------', { align: 'center' });
       doc.moveDown(0.3);
 
-      doc.fontSize(9).font('Helvetica-Bold').text(`FAC-${String(commandeId).padStart(5, '0')}`, { align: 'center' });
-      doc.fontSize(8).font('Helvetica').text(new Date(commande.dateCommande).toLocaleString('fr-FR'), { align: 'center' });
+      const dFac = new Date(commande.dateCommande);
+      const moisAnneeFac = `${String(dFac.getMonth() + 1).padStart(2, '0')}/${dFac.getFullYear()}`;
+      const numFac = (commande as any).numeroRecu || commandeId;
+      doc.fontSize(9).font('Helvetica-Bold').text(`FAC-${String(numFac).padStart(5, '0')} du ${moisAnneeFac}`, { align: 'center' });
       doc.moveDown(0.4);
 
       doc.text('----------------------------------------', { align: 'center' });

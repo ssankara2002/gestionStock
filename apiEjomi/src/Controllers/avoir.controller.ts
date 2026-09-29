@@ -21,13 +21,36 @@ export const createAvoir = async (req: AuthenticatedRequest, res: Response): Pro
 
     const { commandeId, clientId, motif, type, lignes } = req.body;
 
-    if (!commandeId || !clientId || !type || !lignes || lignes.length === 0) {
-      res.status(400).json({ success: false, message: 'commandeId, clientId, type et au moins une ligne sont requis.' });
+    const typesValides = ['REMBOURSEMENT', 'CREDIT', 'GARDE', 'MONNAIE', 'PRODUITS'];
+    if (!type || !typesValides.includes(type)) {
+      res.status(400).json({ success: false, message: `Le type doit être l'un de : ${typesValides.join(', ')}.` });
       return;
     }
 
-    if (!['REMBOURSEMENT', 'CREDIT'].includes(type)) {
-      res.status(400).json({ success: false, message: "Le type doit être REMBOURSEMENT ou CREDIT." });
+    if (!clientId) {
+      res.status(400).json({ success: false, message: 'clientId est requis.' });
+      return;
+    }
+
+    // Pour PRODUITS : commande et lignes obligatoires
+    if (type === 'PRODUITS') {
+      if (!commandeId) {
+        res.status(400).json({ success: false, message: 'La commande est obligatoire pour un avoir de type Produits gardés.' });
+        return;
+      }
+      if (!lignes || lignes.length === 0) {
+        res.status(400).json({ success: false, message: 'Au moins un produit est obligatoire pour un avoir de type Produits gardés.' });
+        return;
+      }
+    }
+
+    // Pour MONNAIE : commande obligatoire, lignes optionnelles
+    if (!commandeId) {
+      res.status(400).json({ success: false, message: 'La commande est obligatoire.' });
+      return;
+    }
+    if (!lignes || lignes.length === 0) {
+      res.status(400).json({ success: false, message: 'Au moins un article est requis.' });
       return;
     }
 
@@ -80,6 +103,36 @@ export const getAvoirsByCommande = async (req: Request, res: Response): Promise<
     res.status(200).json({ success: true, data: avoirs });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || 'Erreur interne.' });
+  }
+};
+
+export const consommerMonnaie = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const avoir = await avoirService.consommerMonnaie(parseInt(id));
+    res.status(200).json({ success: true, message: 'Monnaie créditée sur le compte client.', data: avoir });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || 'Erreur interne.' });
+  }
+};
+
+export const recupererGarde = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const avoir = await avoirService.recupererGarde(parseInt(id));
+    res.status(200).json({ success: true, message: 'Produits récupérés par le client.', data: avoir });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || 'Erreur interne.' });
+  }
+};
+
+export const rembourserCredit = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const avoir = await avoirService.rembourserCredit(parseInt(id));
+    res.status(200).json({ success: true, message: 'Crédit remboursé en espèces.', data: avoir });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || 'Erreur interne.' });
   }
 };
 

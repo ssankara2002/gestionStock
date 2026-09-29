@@ -363,6 +363,7 @@ model HistoriqueInventaire {
 
 model Commande {
   id           Int             @id @default(autoincrement())
+  numeroRecu   Int?
   dateCommande DateTime        @default(now())
   montant      Float
   reduction    Float           @default(0)
@@ -404,23 +405,24 @@ model LigneCommande {
 }
 
 model Avoir {
-  id           Int         @id @default(autoincrement())
-  dateAvoir    DateTime    @default(now())
-  montant      Float
-  motif        String?
-  type         AvoirType   @default(CREDIT)
-  statut       AvoirStatut @default(EN_ATTENTE)
-  commandeId   Int
-  clientId     Int
-  vendeurId    Int?
-  entrepriseId Int?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  commande     Commande    @relation(fields: [commandeId], references: [id])
-  client       User        @relation(fields: [clientId], references: [id])
-  vendeur      Employe?    @relation(fields: [vendeurId], references: [id])
-  entreprise   Entreprise? @relation(fields: [entrepriseId], references: [id])
-  lignes       LigneAvoir[]
+  id                  Int         @id @default(autoincrement())
+  dateAvoir           DateTime    @default(now())
+  montant             Float
+  motif               String?
+  type                AvoirType   @default(CREDIT)
+  statut              AvoirStatut @default(EN_ATTENTE)
+  dateRemboursement   DateTime?
+  commandeId          Int
+  clientId            Int
+  vendeurId           Int?
+  entrepriseId        Int?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  commande            Commande    @relation(fields: [commandeId], references: [id])
+  client              User        @relation(fields: [clientId], references: [id])
+  vendeur             Employe?    @relation(fields: [vendeurId], references: [id])
+  entreprise          Entreprise? @relation(fields: [entrepriseId], references: [id])
+  lignes              LigneAvoir[]
 }
 
 model LigneAvoir {
@@ -684,12 +686,17 @@ enum CategoriePlat {
 enum AvoirType {
   REMBOURSEMENT
   CREDIT
+  GARDE
+  MONNAIE
+  PRODUITS
 }
 
 enum AvoirStatut {
   EN_ATTENTE
   VALIDE
   ANNULE
+  REMBOURSE
+  CONSOMME
 }
 
 

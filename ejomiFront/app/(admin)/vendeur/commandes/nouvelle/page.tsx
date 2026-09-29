@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { Footer } from "@/components/layout/footer"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/context/auth-provider"
-import { produitService, userService, platService } from "@/services"
+import { produitService, userService, platService, avoirService } from "@/services"
 import apiClient from "@/services/api-client"
 import type { User } from "@/types/user"
 import type { Employe } from "@/types/employe"
@@ -70,6 +70,8 @@ export default function NouvelleCommandePage() {
   const [enregistrerPaiement, setEnregistrerPaiement] = useState(true)
   const [montantPaiement, setMontantPaiement] = useState<string>("")
   const [modePaiement, setModePaiement] = useState<string>(ModePaiement.ESPECES)
+  const [creditDispo, setCreditDispo] = useState<number>(0)
+  const [creditUtilise, setCreditUtilise] = useState<string>("")
 
   // État pour la recherche de produits
   const [searchTerm, setSearchTerm] = useState("")
@@ -348,6 +350,7 @@ export default function NouvelleCommandePage() {
         reduction: Number(data.reductionGlobale) || 0,
         statut: "EN_ATTENTE",
         lignes: lignesCommande.map(({ id, ...ligne }) => ligne),
+        ...(creditUtiliseNum > 0 ? { creditUtilise: creditUtiliseNum } : {}),
       }
 
       // Ajouter les informations de paiement si nécessaire
@@ -421,7 +424,20 @@ export default function NouvelleCommandePage() {
   }
 
   const clientIdValue = watch("clientId")
-  const montantRestant = montantTotal - (enregistrerPaiement ? Number(montantPaiement) || 0 : 0)
+
+  useEffect(() => {
+    if (clientIdValue) {
+      avoirService.getClientCredit(String(clientIdValue))
+        .then(res => setCreditDispo(res.data.data?.creditDisponible ?? 0))
+        .catch(() => setCreditDispo(0))
+    } else {
+      setCreditDispo(0)
+      setCreditUtilise("")
+    }
+  }, [clientIdValue])
+
+  const creditUtiliseNum = Math.min(Number(creditUtilise) || 0, creditDispo, montantTotal)
+  const montantRestant = montantTotal - creditUtiliseNum - (enregistrerPaiement ? Number(montantPaiement) || 0 : 0)
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -604,6 +620,12 @@ export default function NouvelleCommandePage() {
                         </div>
                         {errors.clientId && (
                           <p className="text-sm text-red-500 mt-1">{errors.clientId.message}</p>
+                        )}
+                        {creditDispo > 0 && (
+                          <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-blue-50 text-blue-700 text-sm">
+                            <span>Crédit disponible :</span>
+                            <strong>{creditDispo.toLocaleString("fr-FR")} FCFA</strong>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -851,6 +873,28 @@ export default function NouvelleCommandePage() {
                       </Label>
                     </div>
 
+                    {creditDispo > 0 && (
+                      <div className="space-y-2 pt-4 border-t">
+                        <Label>Utiliser le crédit client ({creditDispo.toLocaleString("fr-FR")} FCFA disponible)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            max={Math.min(creditDispo, montantTotal)}
+                            value={creditUtilise}
+                            onChange={e => setCreditUtilise(e.target.value)}
+                            placeholder="0"
+                          />
+                          <Button type="button" variant="outline" onClick={() => setCreditUtilise(String(Math.min(creditDispo, montantTotal)))}>
+                            Tout
+                          </Button>
+                        </div>
+                        {creditUtiliseNum > 0 && (
+                          <p className="text-xs text-blue-600">{creditUtiliseNum.toLocaleString("fr-FR")} FCFA de crédit seront déduits</p>
+                        )}
+                      </div>
+                    )}
+
                     {enregistrerPaiement && (
                       <div className="space-y-4 pt-4 border-t">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -960,17 +1004,25 @@ export default function NouvelleCommandePage() {
                       <span>{montantTotal.toFixed(2)} FCFA</span>
                     </div>
 
-                    {enregistrerPaiement && montantPaiement && (
+                    {(creditUtiliseNum > 0 || (enregistrerPaiement && montantPaiement)) && (
                       <>
                         <Separator />
                         <div className="space-y-2">
-                          <div className="flex justify-between text-green-600">
-                            <span>Montant payé</span>
-                            <span className="font-medium">{Number(montantPaiement).toLocaleString()} FCFA</span>
-                          </div>
+                          {creditUtiliseNum > 0 && (
+                            <div className="flex justify-between text-blue-600">
+                              <span>Crédit utilisé</span>
+                              <span className="font-medium">-{creditUtiliseNum.toLocaleString("fr-FR")} FCFA</span>
+                            </div>
+                          )}
+                          {enregistrerPaiement && montantPaiement && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Montant payé</span>
+                              <span className="font-medium">{Number(montantPaiement).toLocaleString()} FCFA</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-orange-600">
                             <span>Créance restante</span>
-                            <span className="font-medium">{montantRestant.toLocaleString()} FCFA</span>
+                            <span className="font-medium">{Math.max(0, montantRestant).toLocaleString()} FCFA</span>
                           </div>
                         </div>
                       </>
