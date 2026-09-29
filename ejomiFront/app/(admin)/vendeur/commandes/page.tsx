@@ -20,6 +20,7 @@ import { PermissionGuard } from "@/components/permissions/PermissionGuard"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useToast } from "@/hooks/use-toast"
 import type { Commande } from "@/types"
+import { MODES_PAIEMENT_COMMANDE } from "@/types/paiement"
 import {
   Dialog,
   DialogContent,
@@ -181,10 +182,9 @@ function EncaisserModal({ commande, onClose }: { commande: Commande; onClose: ()
               onChange={e => setModePaiement(e.target.value)}
               className="w-full border rounded-md px-3 py-2 text-sm bg-background"
             >
-              <option value="ESPECES">Espèces</option>
-              <option value="MOBILE_MONEY">Mobile Money</option>
-              <option value="CARTE">Carte</option>
-              <option value="AUTRE">Autre</option>
+              {MODES_PAIEMENT_COMMANDE.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
             </select>
           </div>
 

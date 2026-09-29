@@ -653,7 +653,8 @@ const generateRecuPdf = async (commandeId: number): Promise<Buffer | null> => {
 
       const modePaiementLabel: Record<string, string> = {
         ESPECES: 'Espèces', MOBILE_MONEY: 'Mobile Money', ORANGE_MONEY: 'Orange Money',
-        MOOV_MONEY: 'Moov Money', CARTE: 'Carte', AUTRE: 'Autre',
+        MOOV_MONEY: 'Moov Money', WAVE: 'Wave', TELECEL_MONEY: 'Telecel Money',
+        CARTE_BANCAIRE: 'Carte', AUTRE: 'Avoir / Crédit',
       };
 
       paiements.forEach((p: any) => {
@@ -806,7 +807,8 @@ const generateFacturePdf = async (commandeId: number): Promise<Buffer | null> =>
         doc.moveDown(0.3);
         paiements.forEach((p: any) => {
           const date = new Date(p.createdAt || p.datePaiement || '').toLocaleDateString('fr-FR');
-          doc.fontSize(7).font('Helvetica').text(`${date} | ${p.modePaiement} | ${Number(p.montant).toFixed(0)} F`);
+          const modeLabel: Record<string, string> = { ESPECES: "Espèces", ORANGE_MONEY: "Orange Money", MOOV_MONEY: "Moov Money", WAVE: "Wave", TELECEL_MONEY: "Telecel Money", AUTRE: "Avoir / Crédit" };
+          doc.fontSize(7).font("Helvetica").text(`${date} | ${modeLabel[p.modePaiement] || p.modePaiement} | ${Number(p.montant).toFixed(0)} F`);
         });
       }
 
