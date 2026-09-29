@@ -6,10 +6,17 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
 const prisma = new PrismaClient();
 
+// Rôle CLIENT de l'entreprise, créé s'il manque (sinon les clients seraient enregistrés sans rôle)
+const getOrCreateClientRole = async (entrepriseId?: number) => {
+  const existing = await prisma.role.findFirst({ where: { name: 'CLIENT', entrepriseId: entrepriseId ?? null } });
+  if (existing) return existing;
+  return prisma.role.create({ data: { name: 'CLIENT', description: 'Client', entrepriseId: entrepriseId ?? null } });
+};
+
 export const getOrCreateClientAnonyme = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const entrepriseId = (_req as any).user?.entrepriseId;
-    const clientRole = await prisma.role.findFirst({ where: { name: 'CLIENT', ...(entrepriseId ? { entrepriseId } : {}) } });
+    const clientRole = await getOrCreateClientRole(entrepriseId);
 
     let client = await prisma.user.findFirst({
       where: {
@@ -25,7 +32,7 @@ export const getOrCreateClientAnonyme = async (_req: AuthenticatedRequest, res: 
           prenom: 'Client',
           tel: '0000000000',
           adresse: '-',
-          ...(clientRole ? { roleId: clientRole.id } : {}),
+          roleId: clientRole.id,
           ...(entrepriseId ? { entrepriseId } : {}),
         },
       });
@@ -107,9 +114,7 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
 
     const entrepriseId = (req as any).user?.entrepriseId;
 
-    const clientRole = await prisma.role.findFirst({
-      where: { name: 'CLIENT', ...(entrepriseId ? { entrepriseId } : {}) }
-    });
+    const clientRole = await getOrCreateClientRole(entrepriseId);
 
     const userData = {
       nom,
@@ -118,7 +123,7 @@ export const createUserController = async (req: AuthenticatedRequest, res: Respo
       tel: tel || null,
       adresse: adresse || '-',
       password: password || undefined,
-      ...(clientRole ? { roleId: clientRole.id } : {}),
+      roleId: clientRole.id,
       entrepriseId: entrepriseId || undefined,
     };
 
