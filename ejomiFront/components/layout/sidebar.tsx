@@ -77,7 +77,7 @@ export function AppSidebar() {
       href: "/gerant/bilan",
       label: "Bilan financier",
       icon: <PieChart className="h-5 w-5" />,
-      permissions: ["transaction.read"],
+      permissions: ["bilan.read"],
     },
     {
       href: "/vendeur/commandes",
@@ -96,7 +96,7 @@ export function AppSidebar() {
       href: "/vendeur/clients",
       label: "Clients",
       icon: <Users className="h-5 w-5" />,
-      permissions: ["user.read"],
+      permissions: ["client.read"],
     },
     {
       href: "/vendeur/avoirs",
@@ -175,19 +175,19 @@ export function AppSidebar() {
       href: "/magasinier/inventaire-ingredients",
       label: "Inventaire Ingrédients",
       icon: <PackageCheck className="h-5 w-5" />,
-      permissions: ["matiere_premiere.update"],
+      permissions: ["inventaire_ingredient.read"],
     },
     {
       href: "/magasinier/productions",
       label: "Préparations",
       icon: <Factory className="h-5 w-5" />,
-      permissions: ["plat.read"],
+      permissions: ["preparation.read"],
     },
     {
       href: "/magasinier/rapport-plats",
       label: "Rapport coûts plats",
       icon: <PieChart className="h-5 w-5" />,
-      permissions: ["plat.read"],
+      permissions: ["rapport_plat.read"],
     },
     {
       href: "/magasinier/transferts",

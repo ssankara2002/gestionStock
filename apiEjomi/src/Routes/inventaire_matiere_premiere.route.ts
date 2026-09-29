@@ -5,7 +5,7 @@ import { checkPermission } from '../middlewares/permissionMiddleware';
 
 const router = Router();
 
-router.get('/', authenticateToken, checkPermission('matiere_premiere.read'), getIngredientsPourInventaire);
-router.post('/ajuster', authenticateToken, checkPermission('matiere_premiere.update'), ajusterStockIngredients);
+router.get('/', authenticateToken, checkPermission('inventaire_ingredient.read'), getIngredientsPourInventaire);
+router.post('/ajuster', authenticateToken, checkPermission('inventaire_ingredient.update'), ajusterStockIngredients);
 
 export default router;

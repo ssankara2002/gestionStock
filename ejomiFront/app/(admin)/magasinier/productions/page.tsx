@@ -69,7 +69,7 @@ export default function ProductionsPage() {
           </h1>
           <p className="text-muted-foreground text-sm">Historique des préparations — ingrédients consommés par plat</p>
         </div>
-        <PermissionGuard permission="plat.update">
+        <PermissionGuard permission="preparation.create">
           <Button asChild>
             <Link href="/magasinier/productions/nouveau">
               <Plus className="mr-2 h-4 w-4" />
@@ -144,7 +144,7 @@ export default function ProductionsPage() {
                                 Voir
                               </Link>
                             </Button>
-                            {hasPermission("plat.update") && (
+                            {hasPermission("preparation.update") && (
                               <Button variant="outline" size="sm" asChild>
                                 <Link href={`/magasinier/productions/${h.id}/modifier`}>
                                   <Edit className="mr-1 h-3.5 w-3.5" />
@@ -152,7 +152,7 @@ export default function ProductionsPage() {
                                 </Link>
                               </Button>
                             )}
-                            {hasPermission("plat.update") && (
+                            {hasPermission("preparation.delete") && (
                               <Button
                                 variant="destructive"
                                 size="sm"

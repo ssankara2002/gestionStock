@@ -54,6 +54,21 @@ const permissions = [
   { key: 'plat.create', description: 'Créer un plat' },
   { key: 'plat.update', description: 'Modifier un plat / enregistrer une préparation' },
   { key: 'plat.delete', description: 'Supprimer un plat' },
+  { key: 'plat.export', description: 'Exporter les plats' },
+
+  // Préparation permissions
+  { key: 'preparation.read', description: 'Voir les préparations' },
+  { key: 'preparation.create', description: 'Enregistrer une préparation' },
+  { key: 'preparation.update', description: 'Modifier une préparation' },
+  { key: 'preparation.delete', description: 'Supprimer une préparation' },
+  { key: 'rapport_plat.read', description: 'Voir le rapport des coûts des plats' },
+
+  // Inventaire ingrédients permissions
+  { key: 'inventaire_ingredient.read', description: "Voir l'inventaire des ingrédients" },
+  { key: 'inventaire_ingredient.update', description: "Ajuster le stock des ingrédients (inventaire)" },
+
+  // Bilan financier
+  { key: 'bilan.read', description: 'Voir le bilan financier' },
 
   // Commande permissions
   { key: 'commande.read', description: 'Voir les commandes / ventes' },

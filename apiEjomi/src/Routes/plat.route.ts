@@ -12,15 +12,15 @@ const router = Router();
 
 // Routes statiques EN PREMIER (avant /:id)
 router.get('/export', authenticateToken, requirePlatPermissions.export, exportPlats);
-router.get('/rapport-couts', authenticateToken, requirePermission('plat.read'), getRapportCoutsPlats);
+router.get('/rapport-couts', authenticateToken, requirePermission('rapport_plat.read'), getRapportCoutsPlats);
 router.get('/capacite', authenticateToken, requirePermission('plat.read'), getCapaciteTousPlats);
-router.get('/preparations/jour', authenticateToken, requirePermission('plat.read'), getHistoriqueJour);
-router.get('/preparations/all', authenticateToken, requirePermission('plat.read'), getHistorique);
+router.get('/preparations/jour', authenticateToken, requirePermission('preparation.read'), getHistoriqueJour);
+router.get('/preparations/all', authenticateToken, requirePermission('preparation.read'), getHistorique);
 
 // CRUD préparations individuelles (statique — avant /:id)
-router.get('/preparations/:id', authenticateToken, requirePermission('plat.read'), getPreparationById);
-router.put('/preparations/:id', authenticateToken, requirePermission('plat.update'), modifierPreparation);
-router.delete('/preparations/:id', authenticateToken, requirePermission('plat.update'), supprimerPreparation);
+router.get('/preparations/:id', authenticateToken, requirePermission('preparation.read'), getPreparationById);
+router.put('/preparations/:id', authenticateToken, requirePermission('preparation.update'), modifierPreparation);
+router.delete('/preparations/:id', authenticateToken, requirePermission('preparation.delete'), supprimerPreparation);
 
 // CRUD plats
 router.get('/', authenticateToken, requirePermission('plat.read'), getAllPlats);
@@ -38,7 +38,7 @@ router.delete('/:platId/recette/:matierePremiereId', authenticateToken, requireP
 router.get('/:platId/capacite', authenticateToken, requirePermission('plat.read'), getCapacite);
 
 // Préparations par plat
-router.post('/:platId/preparer', authenticateToken, requirePermission('plat.update'), creerPreparation);
-router.get('/:platId/preparations', authenticateToken, requirePermission('plat.read'), getHistorique);
+router.post('/:platId/preparer', authenticateToken, requirePermission('preparation.create'), creerPreparation);
+router.get('/:platId/preparations', authenticateToken, requirePermission('preparation.read'), getHistorique);
 
 export default router;

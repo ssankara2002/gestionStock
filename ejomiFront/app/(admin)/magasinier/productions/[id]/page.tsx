@@ -69,7 +69,7 @@ export default function PreparationDetailPage({ params }: { params: Promise<{ id
           </p>
         </div>
         <div className="flex gap-2">
-          {hasPermission("plat.update") && (
+          {hasPermission("preparation.update") && (
             <Button variant="outline" asChild>
               <Link href={`/magasinier/productions/${id}/modifier`}>
                 <Edit className="mr-2 h-4 w-4" />
@@ -77,7 +77,7 @@ export default function PreparationDetailPage({ params }: { params: Promise<{ id
               </Link>
             </Button>
           )}
-          {hasPermission("plat.update") && (
+          {hasPermission("preparation.delete") && (
             <Button variant="destructive" onClick={confirmerSupprimer} disabled={deleteMutation.isPending}>
               <Trash2 className="mr-2 h-4 w-4" />
               {deleteMutation.isPending ? "Suppression..." : "Supprimer"}

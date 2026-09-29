@@ -17,6 +17,15 @@ export type Permission =
   | "produit.read" | "produit.create" | "produit.update" | "produit.delete" | "produit.export" | "produit.statistics"
   // Plats
   | "plat.read" | "plat.create" | "plat.update" | "plat.delete" | "plat.export"
+  // Préparations & rapport coûts plats
+  | "preparation.read" | "preparation.create" | "preparation.update" | "preparation.delete"
+  | "rapport_plat.read"
+  // Inventaire ingrédients
+  | "inventaire_ingredient.read" | "inventaire_ingredient.update"
+  // Bilan financier
+  | "bilan.read"
+  // Lots de stock
+  | "lot_stock.read"
   // Avoirs
   | "avoir.read" | "avoir.create" | "avoir.delete" | "avoir.export"
   // Commandes

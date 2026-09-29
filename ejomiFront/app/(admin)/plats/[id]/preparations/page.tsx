@@ -26,7 +26,7 @@ export default function PreparationsPlatPage({ params }: { params: Promise<{ id:
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { hasPermission } = usePermissions()
-  const canPreparer = hasPermission("plat.update")
+  const canPreparer = hasPermission("preparation.create")
 
   const [portions, setPortions] = useState("")
   const [note, setNote] = useState("")
