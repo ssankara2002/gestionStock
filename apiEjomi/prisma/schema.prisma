@@ -637,11 +637,13 @@ enum SessionInventaireStatut {
 
 enum CommandeStatut {
   EN_ATTENTE
+  EN_COURS
   CONFIRMEE
   EN_PREPARATION
   PRETE
   LIVREE
   ANNULEE
+  PAYE
 }
 
 enum ModePaiement {

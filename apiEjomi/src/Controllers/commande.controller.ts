@@ -60,6 +60,17 @@ export const createCommande = async (req: AuthenticatedRequest, res: Response): 
   }
 };
 
+export const payerCommande = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id);
+    const { montantPaye, modePaiement, creditUtilise } = req.body;
+    const commande = await commandeService.payerCommande(id, { montantPaye: Number(montantPaye || 0), modePaiement, creditUtilise: Number(creditUtilise || 0) });
+    res.status(200).json({ success: true, message: 'Commande payée avec succès.', data: commande });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || 'Erreur lors du paiement.' });
+  }
+};
+
 export const getAllCommandes = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { skip, take, page, limit } = getPaginationParams(req.query);

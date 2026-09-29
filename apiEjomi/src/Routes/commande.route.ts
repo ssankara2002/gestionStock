@@ -3,6 +3,7 @@ import {
   getAllCommandes,
   getCommandeById,
   createCommande,
+  payerCommande,
   updateCommande,
   deleteCommande,
   getCommandesByClient,
@@ -31,6 +32,7 @@ router.get('/vendeur/:vendeurId', requireCommandePermissions.read, getCommandesB
 router.get('/:id', requireCommandePermissions.read, getCommandeById);
 
 router.post('/', requireCommandePermissions.create, createCommande);
+router.post('/:id/payer', requireCommandePermissions.create, payerCommande);
 
 router.put('/:id', requireCommandePermissions.update, updateCommande);
 

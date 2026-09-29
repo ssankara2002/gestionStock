@@ -96,7 +96,7 @@ const createCommande = async (data: CommandeCreateInput) => {
         entrepriseId: data.entrepriseId,
         dateCommande: data.dateCommande,
         montant: montantFinal,
-        statut: 'EN_ATTENTE' as any,
+        statut: 'EN_COURS' as any,
         reduction: data.reduction,
         lieu: 'BOUTIQUE',
         numeroRecu,
@@ -176,53 +176,56 @@ const createCommande = async (data: CommandeCreateInput) => {
       });
     }
 
-    // 5. Appliquer le crédit client si demandé
-    const creditUtilise = Number(data.creditUtilise || 0);
-    if (creditUtilise > 0) {
-      const client = await tx.user.findUnique({ where: { id: data.clientId }, select: { creditClient: true } });
-      const creditDispo = Number(client?.creditClient || 0);
-      if (creditUtilise > creditDispo) {
-        throw new Error(`Crédit insuffisant. Disponible: ${creditDispo} FCFA, Demandé: ${creditUtilise} FCFA`);
-      }
-      if (creditUtilise > montantFinal) {
-        throw new Error(`Le crédit utilisé (${creditUtilise} FCFA) ne peut pas dépasser le total de la commande (${montantFinal} FCFA)`);
-      }
-      // Déduire du creditClient
-      await tx.user.update({
-        where: { id: data.clientId },
-        data: { creditClient: { decrement: creditUtilise } },
-      });
-      // Enregistrer comme paiement de type CREDIT
-      await tx.paiement.create({
-        data: {
-          commandeId: commande.id,
-          montant: creditUtilise,
-          modePaiement: 'AUTRE' as any,
-          statut: 'REUSSI' as any,
-        },
-      });
-    }
-
-    // 6. Créer le paiement en espèces/autre si fourni
-    const montantPaye = Number(data.montantPaye || 0);
-    const modePaiement = data.modePaiement || 'ESPECES';
-    if (montantPaye > 0) {
-      await tx.paiement.create({
-        data: {
-          commandeId: commande.id,
-          montant: montantPaye,
-          modePaiement: modePaiement as any,
-          statut: 'REUSSI' as any,
-        },
-      });
-    }
-
     return tx.commande.findUnique({
       where: { id: commande.id },
       include: {
         lignes: { include: { produit: true, plat: true, stockBoutique: true } },
         client: true,
         paiements: true,
+      },
+    });
+  });
+};
+
+const payerCommande = async (id: number, data: { montantPaye: number; modePaiement?: string; creditUtilise?: number }) => {
+  return prisma.$transaction(async (tx) => {
+    const commande = await tx.commande.findUnique({ where: { id }, include: { client: true } });
+    if (!commande) throw new Error('Commande introuvable.');
+    if ((commande.statut as string) === 'PAYE') throw new Error('Cette commande est déjà payée.');
+
+    const creditUtilise = Number(data.creditUtilise || 0);
+    const montantEspeces = Number(data.montantPaye || 0);
+
+    // Déduire le crédit client si utilisé
+    if (creditUtilise > 0) {
+      const client = await tx.user.findUnique({ where: { id: (commande as any).clientId }, select: { creditClient: true } });
+      const creditDispo = Number(client?.creditClient || 0);
+      if (creditUtilise > creditDispo) throw new Error(`Crédit insuffisant. Disponible: ${creditDispo} FCFA`);
+      await tx.user.update({
+        where: { id: (commande as any).clientId },
+        data: { creditClient: { decrement: creditUtilise } },
+      });
+      await tx.paiement.create({
+        data: { commandeId: id, montant: creditUtilise, modePaiement: 'AUTRE' as any, statut: 'REUSSI' as any },
+      });
+    }
+
+    // Paiement en espèces/mobile
+    if (montantEspeces > 0) {
+      await tx.paiement.create({
+        data: { commandeId: id, montant: montantEspeces, modePaiement: (data.modePaiement || 'ESPECES') as any, statut: 'REUSSI' as any },
+      });
+    }
+
+    // Passer la commande à PAYE
+    return tx.commande.update({
+      where: { id },
+      data: { statut: 'PAYE' as any },
+      include: {
+        lignes: { include: { produit: true, plat: true } },
+        client: true,
+        paiements: true,
+        vendeur: { include: { user: true } },
       },
     });
   });
@@ -555,8 +558,13 @@ const generateRecuPdf = async (commandeId: number): Promise<Buffer | null> => {
   const telEntreprise = entreprise?.tel || '';
   const adresseEntreprise = entreprise?.adresse || '';
 
+  const paiements = (commande as any).paiements || [];
+  const totalPaye = paiements.reduce((s: number, p: any) => s + Number(p.montant || 0), 0);
+  const montantCommande = Number(commande.montant);
+  const creance = Math.max(0, montantCommande - totalPaye);
+
   const nbLignes = commande.lignes.length;
-  const hauteurFixe = 280;
+  const hauteurFixe = 310 + paiements.length * 16 + (creance > 0 ? 20 : 0);
   const hauteurParLigne = 28;
   const hauteurTotale = hauteurFixe + nbLignes * hauteurParLigne;
 
@@ -637,9 +645,31 @@ const generateRecuPdf = async (commandeId: number): Promise<Buffer | null> => {
       }
 
       doc.fontSize(10).font('Helvetica-Bold').text(`TOTAL: ${montantTotal.toFixed(0)} FCFA`, { align: 'right' });
-      doc.moveDown(0.5);
+      doc.moveDown(0.4);
 
-      doc.fontSize(8).font('Helvetica').text(`Statut: ${commande.statut}`, { align: 'center' });
+      // Détail paiements
+      doc.text('----------------------------------------', { align: 'center' });
+      doc.moveDown(0.3);
+
+      const modePaiementLabel: Record<string, string> = {
+        ESPECES: 'Espèces', MOBILE_MONEY: 'Mobile Money', ORANGE_MONEY: 'Orange Money',
+        MOOV_MONEY: 'Moov Money', CARTE: 'Carte', AUTRE: 'Autre',
+      };
+
+      paiements.forEach((p: any) => {
+        const mode = modePaiementLabel[p.modePaiement] || p.modePaiement;
+        doc.fontSize(8).font('Helvetica').text(`${mode}: ${Number(p.montant).toFixed(0)} FCFA`, { align: 'right' });
+      });
+
+      if (totalPaye > 0) {
+        doc.fontSize(9).font('Helvetica-Bold').text(`PAYÉ: ${totalPaye.toFixed(0)} FCFA`, { align: 'right' });
+      }
+
+      if (creance > 0) {
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('red').text(`RESTE DÛ: ${creance.toFixed(0)} FCFA`, { align: 'right' });
+        doc.fillColor('black');
+      }
+
       doc.moveDown(0.5);
 
       doc.text('----------------------------------------', { align: 'center' });
@@ -795,6 +825,7 @@ const generateFacturePdf = async (commandeId: number): Promise<Buffer | null> =>
 
 export default {
   createCommande,
+  payerCommande,
   getAllCommandes,
   getCommandeById,
   updateCommande,

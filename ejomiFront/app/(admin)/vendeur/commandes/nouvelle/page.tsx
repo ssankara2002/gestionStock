@@ -313,68 +313,36 @@ export default function NouvelleCommandePage() {
       return
     }
 
-    if (!enregistrerPaiement) {
-      toast({
-        title: "Paiement requis",
-        description: "Veuillez enregistrer un paiement pour valider la commande",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const montantNum = Number(montantPaiement)
-    if (!montantNum || montantNum <= 0) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer un montant de paiement valide",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (montantNum > montantTotal) {
-      toast({
-        title: "Erreur",
-        description: "Le montant du paiement ne peut pas dépasser le montant total de la commande",
-        variant: "destructive",
-      })
-      return
-    }
-
     try {
-      // Préparer les données pour l'envoi au backend
       const commandeData: CommandeCreateData = {
         dateCommande: new Date(data.dateCommande),
         clientId: data.clientId,
         vendeurId,
         reduction: Number(data.reductionGlobale) || 0,
-        statut: "EN_ATTENTE",
+        statut: "EN_COURS",
         lignes: lignesCommande.map(({ id, ...ligne }) => ligne),
-        ...(creditUtiliseNum > 0 ? { creditUtilise: creditUtiliseNum } : {}),
       }
 
-      // Ajouter les informations de paiement si nécessaire
-      if (enregistrerPaiement && montantPaiement && Number(montantPaiement) > 0) {
-        commandeData.montantPaye = Number(montantPaiement)
-        commandeData.modePaiement = modePaiement
-      }
+      const res = await commandesService.create(commandeData)
+      const commandeId = (res as any).data?.data?.id || (res as any).data?.id
 
-      console.log("Sending commande data:", commandeData)
-      console.log("VendeurId being sent:", vendeurId)
-
-      await commandesService.create(commandeData)
-
-      if (enregistrerPaiement && montantPaiement && Number(montantPaiement) > 0) {
-        toast({
-          title: "Commande et paiement enregistrés",
-          description: `La commande et le paiement de ${Number(montantPaiement).toLocaleString()} FCFA ont été enregistrés avec succès`,
+      // Générer et ouvrir la facture automatiquement
+      if (commandeId) {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        const token = localStorage.getItem("token")
+        const r = await fetch(`${API_URL}/commandes/facture?id=${commandeId}`, {
+          headers: { Authorization: `Bearer ${token}` },
         })
-      } else {
-        toast({
-          title: "Commande enregistrée",
-          description: `La commande a été enregistrée avec succès`,
-        })
+        if (r.ok) {
+          const blob = await r.blob()
+          window.open(window.URL.createObjectURL(blob), "_blank")
+        }
       }
+
+      toast({
+        title: "Commande enregistrée",
+        description: "La facture a été générée. Encaissez le paiement depuis la liste des ventes.",
+      })
 
       router.push("/vendeur/commandes")
       router.refresh()
@@ -857,107 +825,6 @@ export default function NouvelleCommandePage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Paiement</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="enregistrerPaiement"
-                        checked={enregistrerPaiement}
-                        onCheckedChange={(checked) => setEnregistrerPaiement(checked as boolean)}
-                      />
-                      <Label htmlFor="enregistrerPaiement" className="cursor-pointer">
-                        Enregistrer un paiement maintenant
-                      </Label>
-                    </div>
-
-                    {creditDispo > 0 && (
-                      <div className="space-y-2 pt-4 border-t">
-                        <Label>Utiliser le crédit client ({creditDispo.toLocaleString("fr-FR")} FCFA disponible)</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            max={Math.min(creditDispo, montantTotal)}
-                            value={creditUtilise}
-                            onChange={e => setCreditUtilise(e.target.value)}
-                            placeholder="0"
-                          />
-                          <Button type="button" variant="outline" onClick={() => setCreditUtilise(String(Math.min(creditDispo, montantTotal)))}>
-                            Tout
-                          </Button>
-                        </div>
-                        {creditUtiliseNum > 0 && (
-                          <p className="text-xs text-blue-600">{creditUtiliseNum.toLocaleString("fr-FR")} FCFA de crédit seront déduits</p>
-                        )}
-                      </div>
-                    )}
-
-                    {enregistrerPaiement && (
-                      <div className="space-y-4 pt-4 border-t">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="montantPaiement">Montant du paiement (FCFA)</Label>
-                            <div className="flex gap-2">
-                              <Input
-                                id="montantPaiement"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max={montantTotal}
-                                value={montantPaiement}
-                                onChange={(e) => setMontantPaiement(e.target.value)}
-                                placeholder="0.00"
-                              />
-                              <Button type="button" variant="outline" onClick={remplirMontantTotal}>
-                                Tout
-                              </Button>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Montant total: {montantTotal.toLocaleString()} FCFA
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="modePaiement">Mode de paiement</Label>
-                            <AppSelect
-                              value={{
-                                value: modePaiement,
-                                label:
-                                  {
-                                    ESPECES: "Espèces",
-                                    ORANGE_MONEY: "Orange Money",
-                                    MOOV_MONEY: "Moov Money",
-                                    AUTRE: "Autre",
-                                  }[modePaiement] ?? modePaiement,
-                              }}
-                              onChange={(opt: any) => setModePaiement(opt?.value ?? ModePaiement.ESPECES)}
-                              options={[
-                                { value: ModePaiement.ESPECES, label: "Espèces" },
-                                { value: ModePaiement.ORANGE_MONEY, label: "Orange Money" },
-                                { value: ModePaiement.MOOV_MONEY, label: "Moov Money" },
-                                { value: ModePaiement.AUTRE, label: "Autre" },
-                              ]}
-                            />
-                          </div>
-                        </div>
-
-                        {montantPaiement && Number(montantPaiement) < montantTotal && (
-                          <div className="rounded-lg bg-orange-50 border border-orange-200 p-4">
-                            <p className="text-sm font-medium text-orange-800">
-                              Créance restante: {montantRestant.toLocaleString()} FCFA
-                            </p>
-                            <p className="text-xs text-orange-600 mt-1">
-                              Le client devra payer le montant restant ultérieurement
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
               </div>
 
               {/* Récapitulatif */}
@@ -1004,29 +871,6 @@ export default function NouvelleCommandePage() {
                       <span>{montantTotal.toFixed(2)} FCFA</span>
                     </div>
 
-                    {(creditUtiliseNum > 0 || (enregistrerPaiement && montantPaiement)) && (
-                      <>
-                        <Separator />
-                        <div className="space-y-2">
-                          {creditUtiliseNum > 0 && (
-                            <div className="flex justify-between text-blue-600">
-                              <span>Crédit utilisé</span>
-                              <span className="font-medium">-{creditUtiliseNum.toLocaleString("fr-FR")} FCFA</span>
-                            </div>
-                          )}
-                          {enregistrerPaiement && montantPaiement && (
-                            <div className="flex justify-between text-green-600">
-                              <span>Montant payé</span>
-                              <span className="font-medium">{Number(montantPaiement).toLocaleString()} FCFA</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between text-orange-600">
-                            <span>Créance restante</span>
-                            <span className="font-medium">{Math.max(0, montantRestant).toLocaleString()} FCFA</span>
-                          </div>
-                        </div>
-                      </>
-                    )}
 
                     <div className="pt-4">
                       <div className="rounded-lg bg-muted p-4">
