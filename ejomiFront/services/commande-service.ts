@@ -30,7 +30,7 @@ export const commandesService = {
   getByVendeur: (vendeurId: string) => apiClient.get<Commande[]>(`/commandes/vendeur/${vendeurId}`),
 
   // Payer une commande (passe de EN_COURS à PAYE)
-  payer: (id: string, data: { montantPaye: number; modePaiement?: string; creditUtilise?: number }) =>
+  payer: (id: string, data: { montantPaye: number; modePaiement?: string; creditUtilise?: number; avoirNumero?: string }) =>
     apiClient.post<any>(`/commandes/${id}/payer`, data),
 
   // Récupérer les statistiques des commandes

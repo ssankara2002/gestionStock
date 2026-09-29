@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { formatDateHeure } from "@/lib/utils"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Plus, Search, Eye, Edit, Trash2, Filter } from "lucide-react"
@@ -228,7 +229,7 @@ export default function ApprovisionnementListPage() {
                     ) : (
                       paginatedApprovisionnements.map((app) => (
                         <TableRow key={app.id}>
-                          <TableCell>{new Date(app.dateApprovisionnement).toLocaleDateString('fr-FR')}</TableCell>
+                          <TableCell>{formatDateHeure(app.dateApprovisionnement)}</TableCell>
                           <TableCell>{getFournisseurName(app.fournisseurId)}</TableCell>
                           <TableCell className="text-center">{app.lignes?.length || 0}</TableCell>
                           <TableCell className="text-right">{app.montant.toFixed(2)} FCFA</TableCell>

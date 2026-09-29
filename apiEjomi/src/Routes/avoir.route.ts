@@ -9,9 +9,10 @@ import {
   rembourserCredit,
   deleteAvoir,
   generateAvoirPdf,
+  getBonAvoir,
 } from '../Controllers/avoir.controller.js';
 import authenticateToken from '../middlewares/authMiddleware.js';
-import { requireAvoirPermissions } from '../middlewares/permissionMiddleware.js';
+import { requireAvoirPermissions, requirePermission } from '../middlewares/permissionMiddleware.js';
 
 const router = Router();
 
@@ -19,6 +20,8 @@ router.use(authenticateToken);
 
 router.get('/', requireAvoirPermissions.read, getAllAvoirs);
 router.get('/recu', requireAvoirPermissions.export, generateAvoirPdf);
+// Bon d'avoir saisi à la caisse lors de l'encaissement
+router.get('/bon/:numero', requirePermission(['avoir.read', 'commande.update']), getBonAvoir);
 router.get('/commande/:commandeId', requireAvoirPermissions.read, getAvoirsByCommande);
 router.get('/:id', requireAvoirPermissions.read, getAvoirById);
 

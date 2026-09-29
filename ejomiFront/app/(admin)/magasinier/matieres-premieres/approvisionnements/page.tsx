@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { formatDateHeure } from "@/lib/utils"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Plus, Search, Eye, Edit, Trash2, Filter } from "lucide-react"
@@ -147,7 +148,7 @@ export default function ApprovisionnementListPage() {
                 <TableBody>
                   {filteredApprovisionnements.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{new Date(item.dateApprovisionnement).toLocaleDateString("fr-FR")}</TableCell>
+                      <TableCell>{formatDateHeure(item.dateApprovisionnement)}</TableCell>
                       <TableCell className="font-medium">{`${item.fournisseur.prenom} ${item.fournisseur.nom}`}</TableCell>
                       <TableCell>{`${item.employe.user.prenom} ${item.employe.user.nom}`}</TableCell>
                       <TableCell className="text-right"><Badge variant="secondary">{item.lignes.reduce((sum, l) => sum + l.quantite, 0)}</Badge></TableCell>

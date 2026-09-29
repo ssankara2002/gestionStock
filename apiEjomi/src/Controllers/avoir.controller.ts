@@ -63,11 +63,22 @@ export const createAvoir = async (req: AuthenticatedRequest, res: Response): Pro
       motif,
       type,
       lignes,
+      porteurNom: req.body.porteurNom,
+      porteurTel: req.body.porteurTel,
     });
 
     res.status(201).json({ success: true, message: 'Avoir créé avec succès.', data: nouvelAvoir });
   } catch (error: any) {
     console.error('Erreur création avoir:', error);
+    res.status(400).json({ success: false, message: error.message || 'Erreur interne.' });
+  }
+};
+
+export const getBonAvoir = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const bon = await avoirService.getBonAvoir(req.params.numero, req.user?.entrepriseId);
+    res.status(200).json({ success: true, data: bon });
+  } catch (error: any) {
     res.status(400).json({ success: false, message: error.message || 'Erreur interne.' });
   }
 };

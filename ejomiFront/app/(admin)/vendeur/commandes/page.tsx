@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { dateHeureCommande } from "@/lib/utils"
 import Link from "next/link"
 import { Plus, Search, Eye, Edit, Trash2, FileText, Banknote, Receipt, ShoppingBag } from "lucide-react"
 import { format } from "date-fns"
@@ -60,14 +61,44 @@ function EncaisserModal({ commande, onClose }: { commande: Commande; onClose: ()
   })
   const creditDispo = Number(creditData || 0)
 
+  // Bon d'avoir présenté par le client (clients de passage surtout)
+  const [numeroBon, setNumeroBon] = useState("")
+  const [bon, setBon] = useState<any>(null)
+  const [chargementBon, setChargementBon] = useState(false)
+
   const creditNum = Math.min(Number(creditUtilise) || 0, creditDispo, montantTotal)
-  const resteAPayer = Math.max(0, montantTotal - creditNum)
+  const bonNum = bon ? Math.min(Number(bon.solde) || 0, Math.max(0, montantTotal - creditNum)) : 0
+  const resteAPayer = Math.max(0, montantTotal - creditNum - bonNum)
+
+  const appliquerBon = async () => {
+    if (!numeroBon.trim()) return
+    setChargementBon(true)
+    try {
+      const res = await avoirService.getBon(numeroBon.trim())
+      const b = (res as any).data?.data
+      setBon(b)
+      const applique = Math.min(Number(b?.solde) || 0, Math.max(0, montantTotal - creditNum))
+      setMontantPaye(String(Math.max(0, montantTotal - creditNum - applique)))
+    } catch (e: any) {
+      setBon(null)
+      toast({ title: "Bon d'avoir", description: e?.response?.data?.message || "Bon introuvable", variant: "destructive" })
+    } finally {
+      setChargementBon(false)
+    }
+  }
+
+  const retirerBon = () => {
+    setBon(null)
+    setNumeroBon("")
+    setMontantPaye(String(Math.max(0, montantTotal - creditNum)))
+  }
 
   const mutation = useMutation({
     mutationFn: () => commandesService.payer(String(commande.id), {
       montantPaye: Number(montantPaye),
       modePaiement,
       creditUtilise: creditNum,
+      avoirNumero: bon ? String(bon.id) : undefined,
     }),
     onSuccess: async (res: any) => {
       await queryClient.invalidateQueries({ queryKey: ["commandes"] })
@@ -132,7 +163,7 @@ function EncaisserModal({ commande, onClose }: { commande: Commande; onClose: ()
                   onChange={e => {
                     setCreditUtilise(e.target.value)
                     const c = Math.min(Number(e.target.value) || 0, creditDispo, montantTotal)
-                    setMontantPaye(String(Math.max(0, montantTotal - c)))
+                    setMontantPaye(String(Math.max(0, montantTotal - c - bonNum)))
                   }}
                   className="text-right"
                 />
@@ -142,12 +173,55 @@ function EncaisserModal({ commande, onClose }: { commande: Commande; onClose: ()
                 onClick={() => {
                   const c = Math.min(creditDispo, montantTotal)
                   setCreditUtilise(String(c))
-                  setMontantPaye(String(Math.max(0, montantTotal - c)))
+                  setMontantPaye(String(Math.max(0, montantTotal - c - bonNum)))
                 }}>
                 Utiliser tout le crédit ({Math.min(creditDispo, montantTotal).toLocaleString("fr-FR")} FCFA)
               </Button>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-blue-600" />
+              Bon d'avoir (optionnel)
+            </Label>
+            {bon ? (
+              <div className="p-3 rounded-lg bg-blue-50 text-sm space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-mono font-semibold text-blue-700">AV-{String(bon.id).padStart(5, "0")}</span>
+                  <Button type="button" variant="ghost" size="sm" className="h-7" onClick={retirerBon}>Retirer</Button>
+                </div>
+                {(bon.porteurNom || bon.porteurTel) && (
+                  <div className="text-muted-foreground">Porteur : {[bon.porteurNom, bon.porteurTel].filter(Boolean).join(" — ")}</div>
+                )}
+                <div className="flex justify-between">
+                  <span>Solde du bon</span>
+                  <span>{Number(bon.solde).toLocaleString("fr-FR")} FCFA</span>
+                </div>
+                <div className="flex justify-between font-semibold text-blue-700">
+                  <span>Déduit de cette commande</span>
+                  <span>- {bonNum.toLocaleString("fr-FR")} FCFA</span>
+                </div>
+                {Number(bon.solde) > bonNum && (
+                  <p className="text-xs text-muted-foreground">
+                    Il restera {(Number(bon.solde) - bonNum).toLocaleString("fr-FR")} FCFA sur ce bon.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="N° du bon, ex : AV-00012"
+                  value={numeroBon}
+                  onChange={e => setNumeroBon(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); appliquerBon() } }}
+                />
+                <Button type="button" variant="outline" className="shrink-0" onClick={appliquerBon} disabled={chargementBon || !numeroBon.trim()}>
+                  {chargementBon ? "..." : "Appliquer"}
+                </Button>
+              </div>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label>Montant reçu en espèces</Label>
@@ -188,12 +262,20 @@ function EncaisserModal({ commande, onClose }: { commande: Commande; onClose: ()
             </select>
           </div>
 
-          {creditNum > 0 && (
+          {(creditNum > 0 || bonNum > 0) && (
             <div className="p-3 rounded-lg bg-green-50 text-sm space-y-1">
-              <div className="flex justify-between text-teal-700">
-                <span>Crédit utilisé</span>
-                <span>- {creditNum.toLocaleString("fr-FR")} FCFA</span>
-              </div>
+              {creditNum > 0 && (
+                <div className="flex justify-between text-teal-700">
+                  <span>Crédit utilisé</span>
+                  <span>- {creditNum.toLocaleString("fr-FR")} FCFA</span>
+                </div>
+              )}
+              {bonNum > 0 && (
+                <div className="flex justify-between text-blue-700">
+                  <span>Bon d'avoir AV-{String(bon.id).padStart(5, "0")}</span>
+                  <span>- {bonNum.toLocaleString("fr-FR")} FCFA</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-green-700 border-t pt-1">
                 <span>Reste en espèces</span>
                 <span>{resteAPayer.toLocaleString("fr-FR")} FCFA</span>
@@ -358,7 +440,7 @@ export default function CommandesPage() {
                       <TableRow key={commande.id}>
                         <TableCell className="font-mono text-sm">CMD-{String(commande.id).padStart(5, "0")}</TableCell>
                         <TableCell className="whitespace-nowrap">
-                          {format(new Date(commande.dateCommande), "dd MMM yyyy", { locale: fr })}
+                          {dateHeureCommande(commande as any)}
                         </TableCell>
                         <TableCell>
                           <span className="font-medium">

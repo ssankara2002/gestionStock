@@ -91,7 +91,7 @@ export function RecuCommande({ commande, client, lignesAvecProduits, soldePaieme
           {lignesAvecProduits.map((ligne, index) => (
             <tr key={index} className="border-b border-gray-200">
               <td className="py-3">
-                <div className="font-medium">{ligne.produit ? ligne.produit.libelle : "Produit inconnu"}</div>
+                <div className="font-medium">{ligne.produit?.libelle ?? (ligne as any).plat?.libelle ?? "Article inconnu"}</div>
               </td>
               <td className="py-3 text-right">
                 {ligne.quantiteCommande > 0

@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect, use } from "react"
+import { dateHeureCommande } from "@/lib/utils"
 import { notFound, useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -260,7 +261,7 @@ export default function CommandeDetailPage({ params }: { params: Promise<{ id: s
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Date</span>
-              <span className="font-medium">{format(new Date(commande.dateCommande), "PPP", { locale: fr })}</span>
+              <span className="font-medium">{dateHeureCommande(commande as any)}</span>
             </div>
           </CardContent>
         </Card>
@@ -403,7 +404,7 @@ export default function CommandeDetailPage({ params }: { params: Promise<{ id: s
                   return (
                     <tr key={ligne.id} className="border-b">
                       <td className="py-3 px-4">
-                        <div className="font-medium">{ligne.produit ? ligne.produit.libelle : "Produit inconnu"}</div>
+                        <div className="font-medium">{ligne.produit?.libelle ?? (ligne as any).plat?.libelle ?? "Article inconnu"}</div>
                       </td>
                       <td className="text-center py-3 px-4">{prixU.toLocaleString()} FCFA</td>
                       <td className="text-center py-3 px-4 text-muted-foreground">

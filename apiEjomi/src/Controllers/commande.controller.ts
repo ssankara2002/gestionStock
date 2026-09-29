@@ -63,8 +63,8 @@ export const createCommande = async (req: AuthenticatedRequest, res: Response): 
 export const payerCommande = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id);
-    const { montantPaye, modePaiement, creditUtilise } = req.body;
-    const commande = await commandeService.payerCommande(id, { montantPaye: Number(montantPaye || 0), modePaiement, creditUtilise: Number(creditUtilise || 0) });
+    const { montantPaye, modePaiement, creditUtilise, avoirNumero } = req.body;
+    const commande = await commandeService.payerCommande(id, { montantPaye: Number(montantPaye || 0), modePaiement, creditUtilise: Number(creditUtilise || 0), avoirNumero });
     res.status(200).json({ success: true, message: 'Commande payée avec succès.', data: commande });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message || 'Erreur lors du paiement.' });
@@ -117,7 +117,7 @@ export const getCommandeById = async (req: Request, res: Response): Promise<void
       include: {
         vendeur: { include: { user: true } },
         client: true,
-        lignes: { include: { produit: true } },
+        lignes: { include: { produit: true, plat: true } },
         paiements: true,
       },
     });
@@ -264,7 +264,7 @@ export const getClientCredit = async (req: Request, res: Response): Promise<void
       res.status(404).json({ success: false, message: 'Client introuvable.' });
       return;
     }
-    res.status(200).json({ success: true, data: { clientId: client.id, nom: `${client.prenom} ${client.nom}`, tel: client.tel, creditDisponible: Number(client.creditClient) } });
+    res.status(200).json({ success: true, data: { clientId: client.id, nom: `${client.prenom} ${client.nom}`, tel: client.tel, creditDisponible: client.nom === 'Anonyme' ? 0 : Number(client.creditClient) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || 'Erreur interne.' });
   }

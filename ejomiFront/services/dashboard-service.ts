@@ -89,6 +89,23 @@ export interface DashboardStats {
     revenue: number // Valeur des commandes
     image: string | null
   }>
+  // Ingrédients (null si l'utilisateur n'y a pas accès)
+  ingredients: {
+    total: number
+    valeurStock: number
+    enRupture: number
+    achatsMois: number
+    coutConsommeMois: number
+    plusBas: Array<{ id: number; nom: string; quantiteStock: number; unite: string }>
+  } | null
+  // Top plats commandés
+  topSellingPlats: Array<{
+    id: number
+    name: string
+    sales: number
+    revenue: number
+    image: string | null
+  }>
   // Employés
   employees: {
     total: number
@@ -129,6 +146,7 @@ class DashboardService {
         productionsStats,
         paiementsStats,
         peremptionStats,
+        ingredientsStats,
       ] = await Promise.all([
         apiClient.get("/commandes/statistics"),
         apiClient.get("/produits/statistics"),
@@ -140,6 +158,8 @@ class DashboardService {
         apiClient.get("/productions/statistics"),
         apiClient.get("/paiements/statistics"),
         apiClient.get("/produits/peremption"),
+        // Sans la permission ingrédients, le tableau de bord s'affiche quand même
+        apiClient.get("/matieres-premieres/statistics").catch(() => ({ data: { data: null } })),
       ])
 
       // Extraire les données
@@ -153,6 +173,15 @@ class DashboardService {
       const productionsData = productionsStats.data.data || {}
       const paiementsData = paiementsStats.data.data || {}
       const produitsProchesPeremption: ProduitProchesPeremption[] = peremptionStats.data.data || []
+      const ingredientsData: any = (ingredientsStats as any).data?.data || null
+      const ingredients: DashboardStats["ingredients"] = ingredientsData ? {
+        total: ingredientsData.total || 0,
+        valeurStock: ingredientsData.valeurStock || 0,
+        enRupture: ingredientsData.enRupture || 0,
+        achatsMois: ingredientsData.achatsMois || 0,
+        coutConsommeMois: ingredientsData.coutConsommeMois || 0,
+        plusBas: ingredientsData.plusBas || [],
+      } : null
 
       // Calculer les statistiques de ventes
       const totalVentes = commandesData.totalMontant || 0
@@ -208,6 +237,14 @@ class DashboardService {
         sales: p.quantiteCommandee || p.totalCommandes || 0,
         revenue: p.montantTotal || ((p.quantiteCommandee || 0) * (p.produit?.prixDeVenteUnitaire || 0)),
         image: p.produit?.image || p.image || null
+      }))
+
+      const topSellingPlats = (commandesData.topPlats || []).slice(0, 3).map((p: any) => ({
+        id: p.platId,
+        name: p.plat?.libelle || "Plat inconnu",
+        sales: p.quantiteCommandee || 0,
+        revenue: p.montantTotal || 0,
+        image: p.plat?.image || null
       }))
 
       // Fallback : si pas de données de commandes, utiliser les produits en stock
@@ -275,6 +312,8 @@ class DashboardService {
         lowStockProducts,
         lowStockMagasinProducts,
         topSellingProducts: finalTopProducts,
+        topSellingPlats,
+        ingredients,
         employees: {
           total: employesData.totalEmployes || 0,
           present: (employesData.totalEmployes || 0) - (absencesData.absencesToday || 0),

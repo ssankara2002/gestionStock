@@ -18,7 +18,36 @@ interface AvoirCreateInput {
   motif?: string;
   type: 'REMBOURSEMENT' | 'CREDIT' | 'GARDE' | 'MONNAIE' | 'PRODUITS';
   lignes: LigneAvoirInput[];
+  porteurNom?: string;
+  porteurTel?: string;
 }
+
+// Le client « Anonyme » représente tous les clients de passage : on ne doit jamais
+// alimenter son solde de crédit, sinon n'importe qui pourrait consommer l'avoir d'un autre.
+export const estClientAnonyme = (client?: { nom?: string | null } | null) => client?.nom === 'Anonyme';
+
+// « AV-00012 », « av12 » ou « 12 » → 12
+export const parseNumeroAvoir = (numero: string): number | null => {
+  const chiffres = String(numero || '').replace(/\D/g, '');
+  const id = parseInt(chiffres, 10);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+
+// Bon d'avoir utilisable à la caisse : avoir MONNAIE validé avec un solde restant
+const getBonAvoir = async (numero: string, entrepriseId?: number) => {
+  const id = parseNumeroAvoir(numero);
+  if (!id) throw new Error("Numéro de bon d'avoir invalide.");
+  const avoir = await prisma.avoir.findUnique({
+    where: { id },
+    include: { client: { select: { id: true, nom: true, prenom: true, tel: true } } },
+  });
+  if (!avoir || (entrepriseId && avoir.entrepriseId !== entrepriseId)) throw new Error(`Bon AV-${String(id).padStart(5, '0')} introuvable.`);
+  if (avoir.type !== 'MONNAIE') throw new Error("Ce bon n'est pas un avoir de monnaie.");
+  if (avoir.statut !== 'VALIDE') throw new Error('Ce bon a déjà été utilisé ou remboursé.');
+  const solde = Number(avoir.montant) - Number(avoir.montantUtilise || 0);
+  if (solde <= 0) throw new Error('Ce bon a déjà été entièrement utilisé.');
+  return { ...avoir, solde };
+};
 
 const createAvoir = async (data: AvoirCreateInput) => {
   return prisma.$transaction(async (tx) => {
@@ -40,6 +69,8 @@ const createAvoir = async (data: AvoirCreateInput) => {
         vendeurId: data.vendeurId,
         entrepriseId: data.entrepriseId,
         motif: data.motif,
+        porteurNom: data.porteurNom?.trim() || null,
+        porteurTel: data.porteurTel?.trim() || null,
         type: data.type as any,
         statut: 'EN_ATTENTE' as any,
         montant: montantTotal,
@@ -159,15 +190,19 @@ const getAvoirsByCommande = async (commandeId: number) => {
 
 const consommerMonnaie = async (id: number) => {
   return prisma.$transaction(async (tx) => {
-    const avoir = await tx.avoir.findUnique({ where: { id } });
+    const avoir = await tx.avoir.findUnique({ where: { id }, include: { client: { select: { nom: true } } } });
     if (!avoir) throw new Error('Avoir introuvable.');
     if (!['MONNAIE', 'CREDIT'].includes(avoir.type as string)) throw new Error('Seuls les avoirs de type MONNAIE peuvent être consommés.');
     if (!['VALIDE'].includes(avoir.statut as string)) throw new Error('Seuls les avoirs validés peuvent être consommés.');
+    if (estClientAnonyme(avoir.client)) {
+      throw new Error(`Client de passage : saisissez le bon AV-${String(avoir.id).padStart(5, '0')} au moment d'encaisser sa commande.`);
+    }
 
-    // Créditer le compte client — il consommera à la prochaine commande
+    // Créditer le compte client du solde restant — il consommera à la prochaine commande
+    const solde = Number(avoir.montant) - Number(avoir.montantUtilise || 0);
     await tx.user.update({
       where: { id: avoir.clientId },
-      data: { creditClient: { increment: avoir.montant } },
+      data: { creditClient: { increment: solde } },
     });
 
     return tx.avoir.update({
@@ -208,11 +243,12 @@ const rembourserCredit = async (id: number) => {
       });
     }
 
-    // Sortie de caisse dans les deux cas
+    // Sortie de caisse dans les deux cas — seulement la part du bon pas encore utilisée
+    const solde = Number(avoir.montant) - Number(avoir.montantUtilise || 0);
     await tx.paiement.create({
       data: {
         commandeId: avoir.commandeId,
-        montant: -avoir.montant,
+        montant: -solde,
         modePaiement: 'ESPECES' as any,
         statut: 'REUSSI' as any,
       },
@@ -252,7 +288,7 @@ const generateAvoirPdf = async (avoirId: number): Promise<Buffer | null> => {
   const adresseEntreprise = entreprise?.adresse || '';
 
   const nbLignes = avoir.lignes.length;
-  const hauteurFixe = 340;
+  const hauteurFixe = 380;
   const hauteurParLigne = 28;
   const hauteurTotale = hauteurFixe + nbLignes * hauteurParLigne;
 
@@ -294,7 +330,10 @@ const generateAvoirPdf = async (avoirId: number): Promise<Buffer | null> => {
       // Client
       doc.fontSize(8).font('Helvetica-Bold').text('CLIENT');
       doc.font('Helvetica').text(`${(avoir.client as any).prenom || ''} ${avoir.client.nom}`.trim());
-      if ((avoir.client as any).tel) doc.text(`Tél: ${(avoir.client as any).tel}`);
+      if ((avoir.client as any).tel && !estClientAnonyme(avoir.client)) doc.text(`Tél: ${(avoir.client as any).tel}`);
+      if ((avoir as any).porteurNom || (avoir as any).porteurTel) {
+        doc.text(`Porteur: ${[(avoir as any).porteurNom, (avoir as any).porteurTel].filter(Boolean).join(' - ')}`);
+      }
       doc.moveDown(0.4);
 
       // Vendeur
@@ -341,9 +380,21 @@ const generateAvoirPdf = async (avoirId: number): Promise<Buffer | null> => {
       doc.text('----------------------------------------', { align: 'center' });
       doc.moveDown(0.3);
 
-      const typeLabel = avoir.type === 'REMBOURSEMENT' ? 'REMBOURSEMENT EN ESPÈCES' : 'CRÉDIT CLIENT';
+      const typeLabel = avoir.type === 'REMBOURSEMENT' ? 'REMBOURSEMENT EN ESPÈCES'
+        : avoir.type === 'MONNAIE' ? "BON D'AVOIR (MONNAIE)"
+        : ['PRODUITS', 'GARDE'].includes(avoir.type as string) ? 'PRODUITS GARDÉS'
+        : 'CRÉDIT CLIENT';
       doc.fontSize(9).font('Helvetica-Bold').text(`Type: ${typeLabel}`, { align: 'center' });
       doc.moveDown(0.4);
+
+      if (['MONNAIE', 'PRODUITS', 'GARDE'].includes(avoir.type as string)) {
+        doc.fontSize(8).font('Helvetica-Bold').text(
+          `Présentez ce bon N° AV-${String(avoir.id).padStart(5, '0')} à la caisse.`,
+          { align: 'center' },
+        );
+        doc.fontSize(7).font('Helvetica').text('Bon valable une seule fois.', { align: 'center' });
+        doc.moveDown(0.4);
+      }
 
       doc.fontSize(9).font('Helvetica-Bold').text('Merci pour votre confiance!', { align: 'center' });
       doc.fontSize(7).font('Helvetica').text(nomEntreprise, { align: 'center' });
@@ -365,4 +416,5 @@ export default {
   rembourserCredit,
   deleteAvoir,
   generateAvoirPdf,
+  getBonAvoir,
 };

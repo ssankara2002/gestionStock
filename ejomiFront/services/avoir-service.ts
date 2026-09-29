@@ -11,4 +11,5 @@ export const avoirService = {
   delete: (id: string) => apiClient.delete(`/avoirs/${id}`),
   downloadPdf: (id: number) => apiClient.get(`/avoirs/recu?id=${id}`, { responseType: "blob" }),
   getClientCredit: (clientId: string) => apiClient.get<any>(`/commandes/client/${clientId}/credit`),
+  getBon: (numero: string) => apiClient.get<any>(`/avoirs/bon/${encodeURIComponent(numero)}`),
 }

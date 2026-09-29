@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import PDFDocument from 'pdfkit';
+import { estClientAnonyme, parseNumeroAvoir } from './avoir.service.js';
 
 const prisma = new PrismaClient();
 
@@ -187,7 +188,7 @@ const createCommande = async (data: CommandeCreateInput) => {
   });
 };
 
-const payerCommande = async (id: number, data: { montantPaye: number; modePaiement?: string; creditUtilise?: number }) => {
+const payerCommande = async (id: number, data: { montantPaye: number; modePaiement?: string; creditUtilise?: number; avoirNumero?: string }) => {
   return prisma.$transaction(async (tx) => {
     const commande = await tx.commande.findUnique({ where: { id }, include: { client: true } });
     if (!commande) throw new Error('Commande introuvable.');
@@ -195,6 +196,35 @@ const payerCommande = async (id: number, data: { montantPaye: number; modePaieme
 
     const creditUtilise = Number(data.creditUtilise || 0);
     const montantEspeces = Number(data.montantPaye || 0);
+
+    // Le compte « Anonyme » est partagé par tous les clients de passage : pas de crédit, seulement des bons
+    if (creditUtilise > 0 && estClientAnonyme((commande as any).client)) {
+      throw new Error("Client de passage : utilisez le numéro du bon d'avoir.");
+    }
+
+    // Bon d'avoir présenté à la caisse : on déduit au plus le solde du bon
+    let montantBon = 0;
+    if (data.avoirNumero) {
+      const avoirId = parseNumeroAvoir(data.avoirNumero);
+      const avoir = avoirId ? await tx.avoir.findUnique({ where: { id: avoirId } }) : null;
+      if (!avoir || (commande.entrepriseId && avoir.entrepriseId !== commande.entrepriseId)) throw new Error("Bon d'avoir introuvable.");
+      if (avoir.type !== 'MONNAIE' || avoir.statut !== 'VALIDE') throw new Error("Ce bon d'avoir n'est plus utilisable.");
+      const solde = Number(avoir.montant) - Number(avoir.montantUtilise || 0);
+      montantBon = Math.min(solde, Math.max(0, Number(commande.montant) - creditUtilise));
+      if (montantBon <= 0) throw new Error("Ce bon d'avoir est déjà entièrement utilisé.");
+
+      const toutUtilise = montantBon >= solde;
+      await tx.avoir.update({
+        where: { id: avoir.id },
+        data: {
+          montantUtilise: { increment: montantBon },
+          ...(toutUtilise ? { statut: 'CONSOMME' as any, dateRemboursement: new Date() } : {}),
+        },
+      });
+      await tx.paiement.create({
+        data: { commandeId: id, montant: montantBon, modePaiement: 'AUTRE' as any, statut: 'REUSSI' as any },
+      });
+    }
 
     // Déduire le crédit client si utilisé
     if (creditUtilise > 0) {
@@ -263,7 +293,7 @@ const getCommandeById = async (id: number) => {
     include: {
       client: true,
       vendeur: { include: { user: true } },
-      lignes: { include: { produit: true, stockBoutique: true } },
+      lignes: { include: { produit: true, plat: true, stockBoutique: true } },
       paiements: true,
       livraisons: true,
     },
@@ -491,7 +521,7 @@ const getCommandeStatistics = async (entrepriseId?: number) => {
     prisma.commande.groupBy({ by: ['statut'], where: w, _count: { statut: true }, orderBy: { _count: { statut: 'desc' } } }),
     prisma.ligneCommande.groupBy({
       by: ['produitId'],
-      where: commandeIds ? { commandeId: { in: commandeIds } } : {},
+      where: { produitId: { not: null }, ...(commandeIds ? { commandeId: { in: commandeIds } } : {}) },
       _sum: { quantiteCommande: true, montant: true },
       orderBy: { _sum: { quantiteCommande: 'desc' } },
       take: 5,
@@ -526,6 +556,26 @@ const getCommandeStatistics = async (entrepriseId?: number) => {
       montantTotal: tp._sum?.montant || 0,
     }));
 
+  // Plats les plus vendus
+  const topPlatsGroupes = await prisma.ligneCommande.groupBy({
+    by: ['platId'],
+    where: { platId: { not: null }, ...(commandeIds ? { commandeId: { in: commandeIds } } : {}) },
+    _sum: { quantiteCommande: true, montant: true },
+    orderBy: { _sum: { quantiteCommande: 'desc' } },
+    take: 5,
+  });
+  const platsIds = topPlatsGroupes.map((p) => p.platId).filter((id): id is number => id !== null);
+  const plats = platsIds.length > 0 ? await prisma.plat.findMany({
+    where: { id: { in: platsIds } },
+    select: { id: true, libelle: true, image: true, prixVenteUnitaire: true },
+  }) : [];
+  const topPlats = topPlatsGroupes.map((tp) => ({
+    platId: tp.platId,
+    plat: plats.find((p) => p.id === tp.platId) || null,
+    quantiteCommandee: tp._sum?.quantiteCommande || 0,
+    montantTotal: tp._sum?.montant || 0,
+  }));
+
   const percentChange =
     commandesMoisPrecedent > 0
       ? ((commandesCeMois - commandesMoisPrecedent) / commandesMoisPrecedent) * 100
@@ -539,6 +589,7 @@ const getCommandeStatistics = async (entrepriseId?: number) => {
       count: (item._count as any)?.statut || 0,
     })),
     topProduits: topProduitsWithDetails,
+    topPlats,
     chartsData: { week: commandesSemaine, month: commandesMois, year: commandesAnnee },
     commandesEnAttente,
     commandesLivrees,

@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { dateHeureCommande, formatDateHeure } from "@/lib/utils"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { FileOutput, Plus, Trash2, FileText, Banknote, AlertCircle, PackageCheck, ShoppingBag, ChevronRight } from "lucide-react"
+import { FileOutput, Plus, Trash2, FileText, Banknote, AlertCircle, PackageCheck, ShoppingBag, ChevronRight, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -67,10 +68,13 @@ function NouvelAvoirModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [montantMonnaie, setMontantMonnaie] = useState("")  // pour MONNAIE : saisie directe
   const [lignes, setLignes] = useState<LigneAvoir[]>([])   // pour PRODUITS : articles sélectionnés
   const [motif, setMotif] = useState("")
+  const [porteurNom, setPorteurNom] = useState("")
+  const [porteurTel, setPorteurTel] = useState("")
 
   const reset = () => {
     setEtape(1); setType(""); setCommandeId("")
     setMontantMonnaie(""); setLignes([]); setMotif("")
+    setPorteurNom(""); setPorteurTel("")
   }
   const handleClose = () => { reset(); onClose() }
 
@@ -86,6 +90,7 @@ function NouvelAvoirModal({ open, onClose }: { open: boolean; onClose: () => voi
   })
   const commandes = commandesData || []
   const commandeSelectionnee = commandes.find((c: any) => String(c.id) === commandeId)
+  const clientDePassage = commandeSelectionnee?.client?.nom === "Anonyme"
 
   // Détail commande (articles) — seulement pour PRODUITS
   const { data: commandeDetail } = useQuery({
@@ -144,6 +149,8 @@ function NouvelAvoirModal({ open, onClose }: { open: boolean; onClose: () => voi
         type,
         motif: motif || undefined,
         lignes: lignesPayload,
+        porteurNom: clientDePassage ? porteurNom || undefined : undefined,
+        porteurTel: clientDePassage ? porteurTel || undefined : undefined,
       })
     },
     onSuccess: async (res: any) => {
@@ -250,7 +257,7 @@ function NouvelAvoirModal({ open, onClose }: { open: boolean; onClose: () => voi
                 <SelectContent>
                   {commandes.map((c: any) => (
                     <SelectItem key={c.id} value={String(c.id)}>
-                      CMD-{String(c.id).padStart(5, "0")} — {c.client?.prenom} {c.client?.nom} — {Number(c.montant).toLocaleString("fr-FR")} FCFA ({new Date(c.dateCommande).toLocaleDateString("fr-FR")})
+                      CMD-{String(c.id).padStart(5, "0")} — {c.client?.prenom} {c.client?.nom} — {Number(c.montant).toLocaleString("fr-FR")} FCFA ({dateHeureCommande(c)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -330,6 +337,26 @@ function NouvelAvoirModal({ open, onClose }: { open: boolean; onClose: () => voi
                 ))}
                 <div className="text-right font-bold pt-1 border-t text-sm">
                   Total : {montantTotal.toLocaleString("fr-FR")} FCFA
+                </div>
+              </div>
+            )}
+
+            {/* Client de passage : bon numéroté + porteur */}
+            {clientDePassage && (
+              <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Client de passage :</strong> un bon numéroté sera imprimé. Remettez-le au client ;
+                  il devra le présenter à la caisse pour {type === "MONNAIE" ? "utiliser sa monnaie" : "récupérer ses produits"}.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nom du porteur (optionnel)</Label>
+                    <Input value={porteurNom} onChange={e => setPorteurNom(e.target.value)} placeholder="Ex : Moussa" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Téléphone (optionnel)</Label>
+                    <Input value={porteurTel} onChange={e => setPorteurTel(e.target.value)} placeholder="Ex : 70 00 00 00" />
+                  </div>
                 </div>
               </div>
             )}
@@ -502,16 +529,28 @@ export default function AvoirsPage() {
                       <TableRow key={avoir.id}>
                         <TableCell className="font-mono font-medium">AV-{String(avoir.id).padStart(5, "0")}</TableCell>
                         <TableCell>
-                          <div>{new Date(avoir.dateAvoir).toLocaleDateString("fr-FR")}</div>
+                          <div>{formatDateHeure(avoir.dateAvoir)}</div>
                           {avoir.dateRemboursement && (
                             <div className="text-xs text-purple-600">
-                              {isProduits(avoir) ? "Récupéré" : avoir.statut === "CONSOMME" ? "Consommé" : "Remb."} le {new Date(avoir.dateRemboursement).toLocaleDateString("fr-FR")}
+                              {isProduits(avoir) ? "Récupéré" : avoir.statut === "CONSOMME" ? "Consommé" : "Remb."} le {formatDateHeure(avoir.dateRemboursement)}
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>{avoir.client?.prenom} {avoir.client?.nom}</TableCell>
+                        <TableCell>
+                          <div>{avoir.client?.prenom} {avoir.client?.nom}</div>
+                          {(avoir.porteurNom || avoir.porteurTel) && (
+                            <div className="text-xs text-muted-foreground">Porteur : {[avoir.porteurNom, avoir.porteurTel].filter(Boolean).join(" — ")}</div>
+                          )}
+                        </TableCell>
                         <TableCell className="font-mono">CMD-{String(avoir.commande?.id || avoir.commandeId).padStart(5, "0")}</TableCell>
-                        <TableCell className="font-semibold">{Number(avoir.montant).toLocaleString("fr-FR")} FCFA</TableCell>
+                        <TableCell className="font-semibold">
+                          <div>{Number(avoir.montant).toLocaleString("fr-FR")} FCFA</div>
+                          {Number(avoir.montantUtilise) > 0 && estValide && (
+                            <div className="text-xs font-normal text-blue-700">
+                              Reste {(Number(avoir.montant) - Number(avoir.montantUtilise)).toLocaleString("fr-FR")} FCFA
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell><span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${type.color}`}>{type.label}</span></TableCell>
                         <TableCell><span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statut.color}`}>{statut.label}</span></TableCell>
                         <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">{avoir.motif || "—"}</TableCell>
@@ -540,10 +579,17 @@ export default function AvoirsPage() {
                                   onClick={() => setAvoirToRembourser(avoir)}>
                                   <Banknote className="h-4 w-4 mr-1" />Prendre argent
                                 </Button>
-                                <Button variant="outline" size="sm" className="border-teal-300 text-teal-700 hover:bg-teal-50"
-                                  onClick={() => setAvoirToConsommer(avoir)}>
-                                  <ShoppingBag className="h-4 w-4 mr-1" />Consommer
-                                </Button>
+                                {avoir.client?.nom === "Anonyme" ? (
+                                  <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 text-xs text-blue-700"
+                                    title="Client de passage : saisir ce numéro de bon dans « Encaisser » pour qu'il consomme">
+                                    <Receipt className="h-3.5 w-3.5 mr-1" />Bon à la caisse
+                                  </span>
+                                ) : (
+                                  <Button variant="outline" size="sm" className="border-teal-300 text-teal-700 hover:bg-teal-50"
+                                    onClick={() => setAvoirToConsommer(avoir)}>
+                                    <ShoppingBag className="h-4 w-4 mr-1" />Consommer
+                                  </Button>
+                                )}
                               </PermissionGuard>
                             )}
 
@@ -597,7 +643,7 @@ export default function AvoirsPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               <strong>{avoirToRembourser?.client?.prenom} {avoirToRembourser?.client?.nom}</strong> vient récupérer{" "}
-              <strong>{Number(avoirToRembourser?.montant).toLocaleString("fr-FR")} FCFA</strong> en espèces.
+              <strong>{(Number(avoirToRembourser?.montant) - Number(avoirToRembourser?.montantUtilise || 0)).toLocaleString("fr-FR")} FCFA</strong> en espèces.
               <br /><br />Ce montant sortira de la caisse.
             </AlertDialogDescription>
           </AlertDialogHeader>

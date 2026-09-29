@@ -412,6 +412,10 @@ model Avoir {
   type                AvoirType   @default(CREDIT)
   statut              AvoirStatut @default(EN_ATTENTE)
   dateRemboursement   DateTime?
+  // Bon d'avoir (client de passage) : personne qui détient le bon et part déjà utilisée
+  porteurNom          String?
+  porteurTel          String?
+  montantUtilise      Float       @default(0)
   commandeId          Int
   clientId            Int
   vendeurId           Int?

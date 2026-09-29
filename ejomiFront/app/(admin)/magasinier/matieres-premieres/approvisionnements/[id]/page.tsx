@@ -1,6 +1,7 @@
 "use client"
 
 import { use, useState, useEffect } from "react"
+import { formatDateHeure } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Edit, Trash2, Package, User, Calendar } from "lucide-react"
@@ -145,7 +146,7 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date:</span>
                   <span className="font-medium">
-                    {new Date(approvisionnement.dateApprovisionnement).toLocaleDateString('fr-FR')}
+                    {formatDateHeure(approvisionnement.dateApprovisionnement)}
                   </span>
                 </div>
                 <div className="flex justify-between">

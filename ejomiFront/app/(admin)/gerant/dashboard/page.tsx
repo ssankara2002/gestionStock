@@ -16,6 +16,7 @@ import {
   Store,
   Warehouse,
   Clock,
+  Utensils,
 } from "lucide-react"
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { format } from "date-fns"
@@ -134,7 +135,7 @@ export default function ManagerDashboardPage() {
     )
   }
 
-  const { inventory, customers, orders, recentOrders, lowStockProducts, lowStockMagasinProducts, topSellingProducts, salesChartData, payments, produitsProchesPeremption } = stats
+  const { inventory, customers, orders, recentOrders, lowStockProducts, lowStockMagasinProducts, topSellingProducts, topSellingPlats = [], ingredients = null, salesChartData, payments, produitsProchesPeremption } = stats
 
   // Préparer les données pour le graphique en fonction de la période sélectionnée
   const getChartData = () => {
@@ -572,8 +573,9 @@ export default function ManagerDashboardPage() {
               </CardFooter>
             </Card>
 
-            {/* Top Selling Products */}
-            <Card className="col-span-1">
+            {/* Top Selling Products + Plats */}
+            <div className="col-span-1 space-y-8">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-primary" />
@@ -627,7 +629,131 @@ export default function ManagerDashboardPage() {
                 </Button>
               </CardFooter>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Utensils className="h-5 w-5 text-primary" />
+                  <CardTitle>Plats les plus vendus</CardTitle>
+                </div>
+                <CardDescription>Top des plats les plus demandés</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {topSellingPlats.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucun plat vendu
+                    </div>
+                  ) : (
+                    topSellingPlats.map((plat, index) => (
+                      <div key={plat.id} className="flex items-start gap-4">
+                        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                          {plat.image ? (
+                            <Image
+                              src={plat.image.startsWith("http") ? plat.image : `${process.env.NEXT_PUBLIC_UPLOADS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost'}/uploads/${plat.image}`}
+                              alt={plat.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <Utensils className="h-8 w-8 text-muted-foreground/50" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-primary/10 text-xs">
+                              #{index + 1}
+                            </Badge>
+                            <h4 className="font-medium line-clamp-1">{plat.name}</h4>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <p className="text-muted-foreground">{plat.sales} vendus</p>
+                            <p className="font-medium">{plat.revenue.toLocaleString()} FCFA</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/plats">Voir tous les plats</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+            </div>
           </div>
+          {/* Ingrédients */}
+          {ingredients && (
+            <div className="mt-8">
+              <Card className={ingredients.enRupture > 0 ? "border-purple-500/50" : ""}>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Utensils className="h-5 w-5 text-purple-600" />
+                    <CardTitle>Ingrédients</CardTitle>
+                    {ingredients.enRupture > 0 && (
+                      <Badge variant="destructive" className="ml-auto">
+                        {ingredients.enRupture} en rupture
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription>Stock, achats et consommation des ingrédients ce mois-ci</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-lg border p-4">
+                      <p className="text-sm text-muted-foreground">Valeur du stock</p>
+                      <p className="text-xl font-bold mt-1">{ingredients.valeurStock.toLocaleString()} FCFA</p>
+                      <p className="text-xs text-muted-foreground">{ingredients.total} ingrédient(s)</p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <p className="text-sm text-muted-foreground">Achats du mois</p>
+                      <p className="text-xl font-bold mt-1">{ingredients.achatsMois.toLocaleString()} FCFA</p>
+                      <p className="text-xs text-muted-foreground">approvisionnements ingrédients</p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <p className="text-sm text-muted-foreground">Utilisés ce mois</p>
+                      <p className="text-xl font-bold mt-1">{ingredients.coutConsommeMois.toLocaleString()} FCFA</p>
+                      <p className="text-xs text-muted-foreground">dans les préparations, au prix d'achat</p>
+                    </div>
+                    <div className={`rounded-lg border p-4 ${ingredients.enRupture > 0 ? "border-red-300 bg-red-50" : ""}`}>
+                      <p className="text-sm text-muted-foreground">En rupture</p>
+                      <p className={`text-xl font-bold mt-1 ${ingredients.enRupture > 0 ? "text-red-600" : ""}`}>{ingredients.enRupture}</p>
+                      <p className="text-xs text-muted-foreground">stock à 0 ou moins</p>
+                    </div>
+                  </div>
+
+                  {ingredients.plusBas.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">Stocks les plus bas (≤ 10)</p>
+                      <div className="space-y-2">
+                        {ingredients.plusBas.map((m) => (
+                          <div key={m.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                            <span className="font-medium">{m.nom}</span>
+                            <span className={m.quantiteStock <= 0 ? "font-semibold text-red-600" : "text-orange-600"}>
+                              {m.quantiteStock.toLocaleString()} {m.unite}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="gap-2">
+                  <Button asChild variant="outline" className="flex-1">
+                    <Link href="/magasinier/matieres-premieres">Voir les ingrédients</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="flex-1">
+                    <Link href="/magasinier/matieres-premieres/approvisionnements/nouveau">Approvisionner</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          )}
+
           {/* Produits proches péremption */}
           <div className="mt-8">
             <Card className={produitsProchesPeremption.length > 0 ? "border-red-500/50" : ""}>
