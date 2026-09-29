@@ -77,7 +77,7 @@ export default function ModifierApprovisionnementMatierePremierePage({ params }:
       try {
         const [approRes, matieresRes, fournisseursRes] = await Promise.all([
           approvisionnementMatierePremiereService.getById(parseInt(resolvedParams.id)),
-          matierePremiereService.getAllMatieresPremieres(),
+          matierePremiereService.getAllMatieresPremieres(1, 10000),
           fournisseurService.getAll(),
         ])
 

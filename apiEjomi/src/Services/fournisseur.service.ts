@@ -64,14 +64,18 @@ const getFournisseurById = async (id: number) => {
   });
 };
 
+// Une chaîne vide est stockée à NULL : sinon deux fournisseurs sans téléphone
+// entrent en conflit sur la contrainte unique (tel, entrepriseId).
+const videEnNull = (v?: string | null) => (v && v.trim() !== '' ? v.trim() : null);
+
 const createFournisseur = async (data: FournisseurCreateData & { entrepriseId?: number }) => {
   return await prisma.fournisseur.create({
     data: {
       nom: data.nom,
-      email: data.email,
+      email: videEnNull(data.email),
       prenom: data.prenom,
       adresse: data.adresse,
-      tel: data.tel,
+      tel: videEnNull(data.tel),
       entrepriseId: data.entrepriseId || null,
     },
   });
@@ -82,10 +86,10 @@ const updateFournisseur = async (id: number, data: FournisseurUpdateData) => {
     where: { id },
     data: {
       nom: data.nom,
-      email: data.email,
+      email: data.email === undefined ? undefined : videEnNull(data.email),
       prenom: data.prenom,
       adresse: data.adresse,
-      tel: data.tel,
+      tel: data.tel === undefined ? undefined : videEnNull(data.tel),
     },
   });
 };

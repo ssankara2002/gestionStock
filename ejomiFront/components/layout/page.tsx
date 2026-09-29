@@ -44,7 +44,7 @@ export default function ApprovisionnerMatierePremierePage() {
     const loadData = async () => {
       try {
         const [matieresRes, fournisseursRes] = await Promise.all([
-          getAllMatieresPremieres(),
+          getAllMatieresPremieres(1, 10000),
           fournisseurService.getAll(),
         ])
         setMatieres(matieresRes.data) // Assurez-vous que le service retourne un objet avec une propriété data

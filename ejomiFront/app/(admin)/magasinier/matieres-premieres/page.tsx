@@ -36,13 +36,16 @@ export default function MatieresPremieres() {
         ]);
         setStats(statsRes.data);
         setMatieres(response.data || [])
+        const p = (response as any).pagination ?? {}
+        const page = p.page ?? response.currentPage ?? currentPage
+        const totalPages = p.totalPages ?? response.totalPages ?? 1
         setPagination({
-          page: response.currentPage,
-          totalPages: response.totalPages,
-          total: response.totalItems,
+          page,
+          totalPages,
+          total: p.total ?? response.totalItems ?? 0,
           limit: 10,
-          hasNext: response.currentPage < response.totalPages,
-          hasPrev: response.currentPage > 1,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
         })
       } catch (error: any) {
         console.error('Erreur chargement ingrédients:', error)

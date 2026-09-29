@@ -95,7 +95,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
     const loadInitialData = async () => {
       try {
         const [matieresRes, fournisseursRes] = await Promise.all([
-          matierePremiereService.getAllMatieresPremieres(),
+          matierePremiereService.getAllMatieresPremieres(1, 10000),
           fournisseurService.getAll(),
         ])
         const matieresData: any[] = (matieresRes as any).data?.data || matieresRes.data || []
@@ -204,10 +204,10 @@ export default function NouvelApprovisionnementMatierePremierePage() {
 
   // Ajouter un nouveau fournisseur
   const ajouterNouveauFournisseur = async () => {
-    if (!newFournisseur.nom || !newFournisseur.prenom || !newFournisseur.tel || !newFournisseur.adresse) {
+    if (!newFournisseur.nom.trim() || !newFournisseur.adresse.trim()) {
       toast({
         title: "Erreur",
-        description: "Le nom, prénom, téléphone et adresse du fournisseur sont requis.",
+        description: "Le nom et l'adresse du fournisseur sont requis.",
         variant: "destructive",
       })
       return
@@ -225,7 +225,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
 
       toast({
         title: "Fournisseur ajouté",
-        description: `${createdFournisseur.prenom} ${createdFournisseur.nom} a été ajouté avec succès.`,
+        description: `${[createdFournisseur.prenom, createdFournisseur.nom].filter(Boolean).join(" ")} a été ajouté avec succès.`,
       })
     } catch (error: any) {
       toast({
@@ -370,14 +370,13 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                             <div className="grid gap-4 py-4">
                               <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="prenom" className="text-right">
-                                  Prénom*
+                                  Prénom
                                 </Label>
                                 <Input
                                   id="prenom"
                                   value={newFournisseur.prenom}
                                   onChange={(e) => setNewFournisseur({ ...newFournisseur, prenom: e.target.value })}
                                   className="col-span-3"
-                                  required
                                 />
                               </div>
                               <div className="grid grid-cols-4 items-center gap-4">
@@ -394,7 +393,7 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                               </div>
                               <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="email" className="text-right">
-                                  Email*
+                                  Email
                                 </Label>
                                 <Input
                                   id="email"
@@ -402,19 +401,17 @@ export default function NouvelApprovisionnementMatierePremierePage() {
                                   value={newFournisseur.email}
                                   onChange={(e) => setNewFournisseur({ ...newFournisseur, email: e.target.value })}
                                   className="col-span-3"
-                                  required
                                 />
                               </div>
                               <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="tel" className="text-right">
-                                  Téléphone*
+                                  Téléphone
                                 </Label>
                                 <Input
                                   id="tel"
                                   value={newFournisseur.tel}
                                   onChange={(e) => setNewFournisseur({ ...newFournisseur, tel: e.target.value })}
                                   className="col-span-3"
-                                  required
                                 />
                               </div>
                               <div className="grid grid-cols-4 items-center gap-4">

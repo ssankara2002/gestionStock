@@ -61,7 +61,7 @@ export const createFournisseur = async (req: AuthenticatedRequest, res: Response
     res.status(201).json({ success: true, message: 'Fournisseur cr�� avec succ�s', data: fournisseur });
   } catch (error: any) {
     if (error.code === 'P2002') {
-      res.status(400).json({ success: false, message: 'Email ou t�l�phone d�j� existant' });
+      res.status(400).json({ success: false, message: 'Ce numéro de téléphone est déjà utilisé par un autre fournisseur' });
     } else {
       res.status(500).json({ success: false, message: 'Erreur lors de la cr�ation du fournisseur', error: error.message });
     }
@@ -87,7 +87,7 @@ export const updateFournisseur = async (req: Request, res: Response): Promise<vo
     if (error.code === 'P2025') {
       res.status(404).json({ success: false, message: 'Fournisseur introuvable' });
     } else if (error.code === 'P2002') {
-      res.status(400).json({ success: false, message: 'Email ou t�l�phone d�j� existant' });
+      res.status(400).json({ success: false, message: 'Ce numéro de téléphone est déjà utilisé par un autre fournisseur' });
     } else {
       res.status(500).json({ success: false, message: 'Erreur lors de la mise � jour du fournisseur', error: error.message });
     }
