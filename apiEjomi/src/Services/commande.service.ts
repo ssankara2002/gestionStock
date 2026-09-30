@@ -367,7 +367,8 @@ const updateCommande = async (id: number, data: CommandeCreateInput) => {
         clientId: data.clientId,
         dateCommande: data.dateCommande,
         montant: montantFinal,
-        statut: toCommandeStatut(data.statut) as any,
+        // Sans statut explicite, on conserve l'actuel (sinon une commande EN_COURS repassait EN_ATTENTE)
+        statut: (data.statut ? toCommandeStatut(data.statut) : ancienneCommande.statut) as any,
         reduction: data.reduction,
       },
     });

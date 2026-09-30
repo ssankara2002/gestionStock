@@ -434,7 +434,7 @@ export default function CommandesPage() {
                 ) : (
                   paginatedCommandes.map((commande) => {
                     const statut = STATUT_LABEL[(commande as any).statut] || { label: (commande as any).statut, color: "bg-gray-100 text-gray-700" }
-                    const estEnCours = (commande as any).statut === "EN_COURS"
+                    const estEnCours = ["EN_COURS", "EN_ATTENTE"].includes((commande as any).statut)
                     const estPaye = (commande as any).statut === "PAYE"
                     return (
                       <TableRow key={commande.id}>
