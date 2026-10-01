@@ -9,6 +9,8 @@ import { QueryProvider } from "@/context/query-provider"
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
+  display: "swap",
+  preload: false,
 })
 
 export const metadata: Metadata = {
@@ -20,6 +22,8 @@ const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
   variable: "--font-roboto",
+  display: "swap",
+  preload: false,
 })
 
 export default function RootLayout({

@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Save, RotateCcw } from "lucide-react"
+import { Save, RotateCcw, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { DataPagination } from "@/components/shared/data-pagination"
 import apiClient from "@/services/api-client"
 
 interface IngredientInventaire {
@@ -19,11 +20,15 @@ interface IngredientInventaire {
   quantitePhysique?: number
 }
 
+const ITEMS_PER_PAGE = 10
+
 export default function InventaireIngredientsPage() {
   const { toast } = useToast()
   const [ingredients, setIngredients] = useState<IngredientInventaire[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     apiClient.get("/inventaire-ingredients")
@@ -49,7 +54,6 @@ export default function InventaireIngredientsPage() {
     try {
       const lignes = ingredients.map((i) => ({ id: i.id, quantitePhysique: i.quantitePhysique ?? i.quantiteStock }))
       await apiClient.post("/inventaire-ingredients/ajuster", { lignes })
-      // Mettre à jour les quantités théoriques avec les nouvelles valeurs
       setIngredients((prev) => prev.map((i) => ({ ...i, quantiteStock: i.quantitePhysique ?? i.quantiteStock })))
       toast({ title: "Inventaire enregistré", description: "Les stocks ont été mis à jour avec succès." })
     } catch (error: any) {
@@ -58,6 +62,23 @@ export default function InventaireIngredientsPage() {
       setSaving(false)
     }
   }
+
+  // Filtrage
+  const filtered = ingredients.filter((i) =>
+    i.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (i.categorie?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
+  )
+  const totalItems = filtered.length
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
+  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const pagination = totalItems > 0 ? {
+    page: currentPage,
+    totalPages,
+    total: totalItems,
+    limit: ITEMS_PER_PAGE,
+    hasNext: currentPage < totalPages,
+    hasPrev: currentPage > 1,
+  } : null
 
   if (loading) {
     return <div className="flex items-center justify-center h-48"><p>Chargement...</p></div>
@@ -88,6 +109,30 @@ export default function InventaireIngredientsPage() {
           <CardDescription>Modifiez la colonne "Quantité physique" pour chaque ingrédient</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <div className="relative w-full sm:w-96">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Rechercher un ingrédient..."
+                className="w-full pl-8"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1 h-7 w-7"
+                  onClick={() => { setSearchTerm(""); setCurrentPage(1) }}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Effacer</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -100,7 +145,7 @@ export default function InventaireIngredientsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ingredients.map((ing) => {
+                {paginated.map((ing) => {
                   const physique = ing.quantitePhysique ?? ing.quantiteStock
                   const ecart = physique - ing.quantiteStock
                   return (
@@ -135,16 +180,22 @@ export default function InventaireIngredientsPage() {
                     </TableRow>
                   )
                 })}
-                {ingredients.length === 0 && (
+                {paginated.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      Aucun ingrédient trouvé
+                      {searchTerm ? "Aucun ingrédient ne correspond à la recherche" : "Aucun ingrédient trouvé"}
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+          {pagination && (
+            <DataPagination
+              pagination={pagination}
+              onPageChange={(page) => setCurrentPage(page)}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

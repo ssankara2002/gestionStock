@@ -13,24 +13,25 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
 import { Footer } from "@/components/layout/footer"
-import { approvisionnementService, produitService, fournisseurService } from "@/services"
-import type { Approvisionnement } from "@/types/approvisionnement"
-import type { Produit } from "@/types/produit"
+import { approvisionnementMatierePremiereService } from "@/services/approvisionnement-matiere-premiere-service"
+import { matierePremiereService } from "@/services/matiere-premiere-service"
+import { fournisseurService } from "@/services"
 import type { Fournisseur } from "@/types/fournisseur"
+import type { MatierePremiere } from "@/types/matierePremiere"
 
 export default function ApprovisionnementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const router = useRouter()
   const { toast } = useToast()
-  const [approvisionnement, setApprovisionnement] = useState<Approvisionnement | null>(null)
+  const [approvisionnement, setApprovisionnement] = useState<any | null>(null)
   const [fournisseur, setFournisseur] = useState<Fournisseur | null>(null)
-  const [produits, setProduits] = useState<Produit[]>([])
+  const [matieres, setMatieres] = useState<MatierePremiere[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const approRes = await approvisionnementService.getById(parseInt(resolvedParams.id))
+        const approRes = await approvisionnementMatierePremiereService.getById(parseInt(resolvedParams.id))
         const approData = (approRes.data as any).data || approRes.data
         setApprovisionnement(approData)
 
@@ -40,9 +41,9 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
           setFournisseur((fournRes.data as any).data || fournRes.data)
         }
 
-        // Charger tous les produits
-        const produitsRes = await produitService.getAll()
-        setProduits(Array.isArray(produitsRes.data) ? produitsRes.data : (produitsRes.data as any).data || [])
+        // Charger toutes les matières premières
+        const mpRes = await matierePremiereService.getAllMatieresPremieres(1, 1000)
+        setMatieres(mpRes.data || [])
       } catch (error) {
         toast({
           title: "Erreur de chargement",
@@ -61,7 +62,7 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
     if (!confirm("Voulez-vous vraiment supprimer cet approvisionnement ?")) return
 
     try {
-      await approvisionnementService.delete(parseInt(resolvedParams.id))
+      await approvisionnementMatierePremiereService.deleteById(parseInt(resolvedParams.id))
       toast({
         title: "Approvisionnement supprimé",
         description: "L'approvisionnement a été supprimé avec succès",
@@ -104,7 +105,7 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
     )
   }
 
-  const getProduitById = (id: number) => produits.find((p) => p.id === id)
+  const getMatiereById = (id: number) => matieres.find((m) => m.id === id)
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -200,7 +201,7 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Produits:</span>
+                  <span className="text-muted-foreground">Matières:</span>
                   <span className="font-medium">{approvisionnement.lignes?.length || 0}</span>
                 </div>
                 <div className="flex justify-between">
@@ -220,27 +221,29 @@ export default function ApprovisionnementDetailPage({ params }: { params: Promis
 
           <Card>
             <CardHeader>
-              <CardTitle>Produits approvisionnés</CardTitle>
+              <CardTitle>Matières premières approvisionnées</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Produit</TableHead>
+                    <TableHead>Matière première</TableHead>
                     <TableHead className="text-center">Quantité</TableHead>
                     <TableHead className="text-right">Prix unitaire</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {approvisionnement.lignes?.map((ligne) => {
-                    const produit = getProduitById(Number(ligne.produitId))
+                  {approvisionnement.lignes?.map((ligne: any) => {
+                    const matiere = ligne.matierePremiere || getMatiereById(Number(ligne.matierePremiereId))
                     return (
                       <TableRow key={ligne.id}>
                         <TableCell className="font-medium">
-                          {produit?.libelle || 'Produit inconnu'}
+                          {matiere?.nom || 'Matière inconnue'}
                         </TableCell>
-                        <TableCell className="text-center">{ligne.quantite}</TableCell>
+                        <TableCell className="text-center">
+                          {ligne.quantite} {matiere?.unite || ''}
+                        </TableCell>
                         <TableCell className="text-right">
                           {(ligne.montant / ligne.quantite).toFixed(2)} FCFA
                         </TableCell>
